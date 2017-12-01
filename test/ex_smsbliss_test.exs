@@ -1,8 +1,8 @@
-defmodule ExSmsblissTest do
+defmodule ExSmsBlissTest do
   use ExUnit.Case
-  doctest ExSmsbliss
+  doctest ExSmsBliss
 
   test "greets the world" do
-    assert ExSmsbliss.hello() == :world
+    assert ExSmsBliss.hello() == :world
   end
 end

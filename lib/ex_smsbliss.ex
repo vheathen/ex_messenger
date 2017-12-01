@@ -1,4 +1,4 @@
-defmodule ExSmsbliss do
+defmodule ExSmsBliss do
   @moduledoc """
   Documentation for ExSmsbliss.
   """
@@ -8,7 +8,7 @@ defmodule ExSmsbliss do
 
   ## Examples
 
-      iex> ExSmsbliss.hello
+      iex> ExSmsBliss.hello
       :world
 
   """
