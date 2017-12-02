@@ -27,7 +27,7 @@ defmodule ExSmsBliss.Mixfile do
   def application do
     [
       extra_applications: [:logger],
-      # mod: {ExSmsBliss.Application, []}
+      mod: {ExSmsBliss.Application, []}
     ]
   end
 
@@ -36,6 +36,9 @@ defmodule ExSmsBliss.Mixfile do
     [
       # {:dep_from_hexpm, "~> 0.3.0"},
       # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"},
+
+      {:tesla, "~> 0.9.0"},
+      {:poison, ">= 1.0.0"},
 
       {:credo, "~> 0.8", only: [:dev, :test], runtime: false},
       {:mix_test_watch, path: "/home/vlad/ProjectsLocal/mix-test.watch", only: :dev, runtime: false}, #"~> 0.5", only: :dev, runtime: false},
