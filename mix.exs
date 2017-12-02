@@ -6,6 +6,7 @@ defmodule ExSmsBliss.Mixfile do
       app: :ex_smsbliss,
       version: "0.1.0",
       elixir: "~> 1.5",
+      elixirc_paths: elixirc_paths(Mix.env),
       start_permanent: Mix.env == :prod,
       deps: deps(),
 
@@ -31,6 +32,10 @@ defmodule ExSmsBliss.Mixfile do
     ]
   end
 
+  # Specifies which paths to compile per environment.
+  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  defp elixirc_paths(_),     do: ["lib"]
+
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
@@ -40,6 +45,7 @@ defmodule ExSmsBliss.Mixfile do
       {:tesla, "~> 0.9.0"},
       {:poison, ">= 1.0.0"},
 
+      {:faker, "~> 0.9", only: :test},
       {:credo, "~> 0.8", only: [:dev, :test], runtime: false},
       {:mix_test_watch, path: "/home/vlad/ProjectsLocal/mix-test.watch", only: :dev, runtime: false}, #"~> 0.5", only: :dev, runtime: false},
     ]
