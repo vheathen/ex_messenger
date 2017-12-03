@@ -4,6 +4,8 @@ defmodule ExSmsBliss.Json do
   """
   use Tesla, only: [:post]
 
+  alias ExSmsBliss.Config
+
   @phone_number_format ~r/\A\+?\d{11,15}\Z/
 
   plug Tesla.Middleware.BaseUrl, "https://api.smsbliss.net/messages/v2/" # will get from Config
@@ -15,14 +17,21 @@ defmodule ExSmsBliss.Json do
   @doc """
   Sends up to 200 messages per request
 
+  `opts` can be:
+  *  `:request_billing` - override global `:request_billing_on_send` parameter
+
   """
   def send(messages, opts \\ []) when is_list(messages) do
-    body = 
-      %{messages: messages}
+    req_bill? =
+      if Keyword.has_key?(opts, :request_billing), do: Keyword.get(opts, :request_billing),
+      else: Config.get(:request_billing_on_send)
+
+    body = %{messages: messages}
+    body = if req_bill?, do: Map.put(body, "showBillingDetails", true), else: body
       
     %Tesla.Env{body: body} = post("/send.json", body)
 
-    body
+    {:ok, body}
   end
 
   @doc """
