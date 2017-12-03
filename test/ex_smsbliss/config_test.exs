@@ -13,5 +13,9 @@ defmodule ExSmsBliss.ConfigTest do
   test "Config.get must return correct values" do
     assert Config.get(:auth) == Application.get_env(:ex_smsbliss, :auth)
   end
+
+  test ":request_billing_on_send should be true by default" do
+    assert true == Config.get(:request_billing_on_send)
+  end
   
 end

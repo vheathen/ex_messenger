@@ -3,6 +3,8 @@ defmodule ExSmsBliss.Config do
 
   @defaults %{
         api_base: "http://api.smsbliss.net/messages/v2/",
+        request_billing_on_send: true, # should it request billing details on each send message\messages?
+
         push: false,    # do not reply to the sender by default (wait for a result request)
         auth: []
     }
