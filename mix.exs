@@ -45,7 +45,7 @@ defmodule ExSmsBliss.Mixfile do
       {:tesla, "~> 0.9.0"},
       {:poison, ">= 1.0.0"},
 
-      {:faker, "~> 0.9", only: :test},
+      {:faker, "~> 0.9", only: [:test, :dev]},
       {:credo, "~> 0.8", only: [:dev, :test], runtime: false},
       {:mix_test_watch, path: "/home/vlad/ProjectsLocal/mix-test.watch", only: :dev, runtime: false}, #"~> 0.5", only: :dev, runtime: false},
     ]
