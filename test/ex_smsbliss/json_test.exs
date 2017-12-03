@@ -37,6 +37,86 @@ defmodule ExSmsBliss.JsonTest do
       {:ok, msgs: msgs}
     end
 
+    test "it must be able to send a list of messages", %{msgs: msgs} do
+      assert {:ok, reply} = Json.send(msgs)
+      assert %{"orig" => request} = reply
+
+      assert Map.has_key?(request, "messages")
+      assert msgs |> Enum.count() == Map.get(request, "messages") |> Enum.count()
+    end
+
+    test "it must be able to send a message" do
+      msg = message()
+
+      assert {:ok, reply} = Json.send(msg)
+      assert %{"orig" => request} = reply
+
+      assert Map.has_key?(request, "messages")
+      assert 1 == Map.get(request, "messages") |> Enum.count()
+    end
+
+    test "it must put correct login/password if it is opts", %{msgs: msgs} do
+      login = "OptedLoginAgain"
+      password = "OptedPasswordAgain"
+
+      assert {:ok, reply} = Json.send(msgs, login: login, password: password)
+      assert %{"orig" => request} = reply
+
+      assert login == Map.get(request, "login")
+      assert password == Map.get(request, "password")      
+    end
+
+    test "it must check a message to have :text field" do
+      msg = %{phone: "79121234567"}
+
+      assert {:error, _} = Json.send(msg)      
+    end
+
+    test "it must check a message to have :text field as a non-emtpy string" do
+      msg = %{phone: "79121234567", text: ""}
+      
+      assert {:error, _} = Json.send(msg)      
+    end
+
+    test "it must check a message to have :phone field" do
+      msg = %{text: "something"}
+      
+      assert {:error, _} = Json.send(msg)      
+    end
+
+    test "it must check a message to have :phone field as an integer or a string in a proper international format (E.164)" do
+      msg = %{phone: "791212345678", text: "text"}      
+      assert {:error, _} = Json.send(msg)
+
+      msg = %{phone: 791212345678, text: "text"}      
+      assert {:error, _} = Json.send(msg)
+
+      msg = %{phone: "abc1928345", text: "text"}      
+      assert {:error, _} = Json.send(msg)
+
+      msg = %{phone: "79121234567", text: "text"}      
+      assert {:ok, _} = Json.send(msg)
+
+      msg = %{phone: 79121234567, text: "text"}      
+      assert {:ok, _} = Json.send(msg)
+    end
+
+    test "it must a messages :client_id to be a non-empty string no more than 72 characters long" do
+      client_id = ""
+      msg = %{phone: "79121234567", text: "text", client_id: client_id}
+      assert {:error, _} = Json.send(msg)
+
+      client_id = String.duplicate("12567", 20)
+      msg = %{phone: "79121234567", text: "text", client_id: client_id}
+      assert {:error, _} = Json.send(msg)
+    end
+
+    test "it must check messages list to NOT have more than one message with the same :client_id", %{msgs: msgs} do
+      msgs = msgs |> Enum.map(&Map.put(&1, :client_id, "the_same_value"))
+
+      assert {:error, _} = Json.send(msgs)
+    end
+
     test "it must has login/password fields", %{msgs: msgs} do
       assert {:ok, reply} = Json.send(msgs)
 
@@ -89,13 +169,79 @@ defmodule ExSmsBliss.JsonTest do
       Application.put_env(:ex_smsbliss, :request_billing_on_send, current_state)
 
       assert %{"orig" => request} = reply
-      refute Map.get(request, "showBillingDetails")
-      
+      refute Map.get(request, "showBillingDetails")      
     end
 
-    # test "it must set schedule time if its in the second parameter", %{msgs: msgs} do
-      
-    # end
+    test "it must NOT set schedule time by default", %{msgs: msgs} do
+      assert {:ok, reply} = Json.send(msgs)
+      assert %{"orig" => request} = reply
+      refute Map.has_key?(request, "scheduleTime")
+    end
+
+    test "it must set schedule time if it is in opts", %{msgs: msgs} do
+      dt_str = DateTime.utc_now |> DateTime.to_iso8601 |> String.replace(~r/\.\d+Z/, "Z")
+
+      assert {:ok, reply} = Json.send(msgs, schedule_at: dt_str)
+      assert %{"orig" => request} = reply
+      assert dt_str == Map.get(request, "scheduleTime")
+    end
+
+    test "it must set schedule time and properly format it if it is in opts", %{msgs: msgs} do
+      dt_str_req = DateTime.utc_now() |> DateTime.to_iso8601()
+      dt_str = dt_str_req |> String.replace(~r/\.\d+Z/, "Z")
+
+      assert {:ok, reply} = Json.send(msgs, schedule_at: dt_str_req)
+      assert %{"orig" => request} = reply
+      assert dt_str == Map.get(request, "scheduleTime")
+    end
+
+    test "it must return {:error, description} if schedule_at is in the wrong format", %{msgs: msgs} do
+      dt_str = "2017-12-03 13:07:08.442228"
+      assert {:error, _} = Json.send(msgs, schedule_at: dt_str)
+
+      dt_str = nil
+      assert {:error, _} = Json.send(msgs, schedule_at: dt_str)
+    end
+
+    test "it must add sender to every message if :sender is set in opts", %{msgs: msgs} do
+      sender = "NEW_SENDER"
+
+      assert {:ok, reply} = Json.send(msgs, sender: sender)
+      assert %{"orig" => request} = reply
+
+      request
+      |> Map.get("messages")
+      |> Enum.each(&(assert sender == Map.get(&1, "sender")))
+    end
+
+    test "it must check :sender is a non-empty string" do
+      sender = ""
+      msg = %{phone: "79121234567", text: "some", sender: sender}
+      assert {:error, _} = Json.send(msg)
+
+      msg = %{phone: "79121234567", text: "some"}
+      assert {:error, _} = Json.send(msg, sender: sender)
+    end
+
+    @tag msgs_type: :sender
+    test "it must not replace message's :sender with an opts's value", %{msgs: msgs} do
+      sender = "ANOTHER_ONE_SENDER"
+
+      assert {:ok, reply} = Json.send(msgs, sender: sender)
+      assert %{"orig" => %{"messages" => messages}} = reply
+
+      messages
+      |> Enum.each(&(refute sender == Map.get(&1, "sender")))
+
+    end
+
+    test "it must set :queue_name if there is such option on opts", %{msgs: msgs} do
+      queue_name = "NormalName"
+      assert {:ok, reply} = Json.send(msgs, queue_name: queue_name)
+      assert %{"orig" => request} = reply
+
+      assert queue_name == Map.get(request, "statusQueueName")
+    end
 
   end
 end
