@@ -28,9 +28,9 @@ defmodule ExSmsBliss.JsonTest do
     setup context do
       msgs = 
         case Map.get(context, :msgs_type) do
-          :id -> messages(10, client_id: true)
+          :client_id -> messages(10, client_id: true)
           :sender -> messages(10, client_id: false, sender: "SKB")
-          :id_sender -> messages(10, client_id: true, sender: "SKB")
+          :client_id_sender -> messages(10, client_id: true, sender: "SKB")
           _ -> messages(10, client_id: false)
         end
 
@@ -94,11 +94,21 @@ defmodule ExSmsBliss.JsonTest do
       msg = %{phone: "abc1928345", text: "text"}      
       assert {:error, _} = Json.send(msg)
 
-      msg = %{phone: "79121234567", text: "text"}      
+      msg = %{phone: "79121234567", text: "text"}
       assert {:ok, _} = Json.send(msg)
 
-      msg = %{phone: 79121234567, text: "text"}      
+      msg = %{phone: 79121234567, text: "text"}
       assert {:ok, _} = Json.send(msg)
+    end
+
+    @tag msgs_type: :client_id
+    test "it must put client_id to the result message", %{msgs: msgs} do
+
+      assert {:ok, reply} = Json.send(msgs)
+      assert %{"orig" => %{"messages" => messages}} = reply
+
+      messages
+      |> Enum.each(&(assert byte_size(Map.get(&1, "clientId")) > 0))
     end
 
     test "it must a messages :client_id to be a non-empty string no more than 72 characters long" do

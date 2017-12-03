@@ -14,9 +14,9 @@ defmodule ExSmsBliss.MessagesTestHelper do
     
     main = if sender, do: Map.put(main, :sender, sender), else: main
 
-    client_id = if Keyword.get(opts, :client_id), do: Faker.String.base64, else: nil
+    client_id = if Keyword.get(opts, :client_id), do: Faker.Code.iban, else: nil
 
-    main = if client_id, do: Map.put(main, "clientId", client_id), else: main
+    main = if client_id, do: Map.put(main, :client_id, client_id), else: main
 
     main
   end

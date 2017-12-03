@@ -25,10 +25,12 @@ defmodule ExSmsBliss.Json do
   Sends up to 200 messages per request.
   Returns {:ok, respond} tuple of everything went fine or {:error, details} in the opposite case.
 
-  `opts` can be:
-  * `:request_billing` - override global `:request_billing_on_send` parameter
-  * `:schedule_at` - a DateTime structure or a properly formatted ISO8601 string
-  * `:queue_name` - status queue name
+  `opts` can include:
+    * `:request_billing` - override global `:request_billing_on_send` parameter
+    * `:sender` - set sender for all messages in a package; this setting will NOT override 
+        per-message sender if it is set
+    * `:schedule_at` - a DateTime structure or a properly formatted ISO8601 string
+    * `:queue_name` - status queue name
 
   """
   def send(messages, opts \\ []) do
@@ -40,7 +42,7 @@ defmodule ExSmsBliss.Json do
   end
 
   @doc """
-  A "danger" version of `send/2`.
+  A "danger" version of the `send/2`.
   """
   def send!(messages, opts \\ []) do
 
@@ -57,6 +59,14 @@ defmodule ExSmsBliss.Json do
     end
 
   end
+
+#  send result
+#   {:ok,
+#  %{"balance" => [%{"balance" => 14839.09, "credit" => 0.0, "type" => "RUB"}],
+#    "messages" => [%{"clientId" => "None", "msgCost" => 1.64, "smsCount" => 1,
+#       "smscId" => 2593129081, "status" => "accepted"},
+#     %{"clientId" => "None", "msgCost" => 1.64, "smsCount" => 1,
+#       "smscId" => 2593129080, "status" => "accepted"}], "status" => "ok"}}
 
   @doc """
   Checks status of up to 200 messages per request
@@ -242,13 +252,13 @@ defmodule ExSmsBliss.Json do
   defp prepare_message_field(:client_id, new, %{client_id: client_id}, _opts)
     when is_integer(client_id) 
   do
-    new |> Map.put(:client_id, client_id)
+    new |> Map.put("clientId", client_id)
   end
   defp prepare_message_field(:client_id, new, %{client_id: client_id}, opts) 
     when is_binary(client_id) 
   do
     if Regex.match?(@client_id_format, client_id), 
-      do: new |> Map.put(:client_id, client_id),
+      do: new |> Map.put("clientId", client_id),
       else: prepare_message_field(:client_id, new, nil, opts)
   end
   defp prepare_message_field(:client_id, _new, nil, _opts) do
@@ -268,7 +278,7 @@ defmodule ExSmsBliss.Json do
   end
 
   # check for client id repeats in a message list: all magic is here
-  defp client_id_uniq?([%{client_id: client_id} | tail], acc, request) do
+  defp client_id_uniq?([%{"clientId" => client_id} | tail], acc, request) do
     if Enum.find_value(acc, &(&1 == client_id)), 
       do: raise(ArgumentError, ~s(Each message :client_id must be unique for the message list)),
       else: client_id_uniq?(tail, acc ++ [client_id], request)
