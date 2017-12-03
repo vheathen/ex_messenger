@@ -1,1 +1,2 @@
+Faker.start
 ExUnit.start()
