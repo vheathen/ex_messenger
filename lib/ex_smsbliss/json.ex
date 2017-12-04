@@ -7,6 +7,8 @@ defmodule ExSmsBliss.Json do
   alias ExSmsBliss.Config
 
   @message_fields ~w(text phone sender client_id)a
+
+  # @send_pre_checks ~w(message_count)a
   @send_fields ~w(messages schedule_at request_billing queue_name login password)a
   @send_post_checks ~w(client_id_uniq)a
 
@@ -48,7 +50,9 @@ defmodule ExSmsBliss.Json do
 
     with \
       opts <-     Keyword.put(opts, :messages, messages),
-      request <-  Enum.reduce(@send_fields, %{}, &(prepare_send_field(&1, &2, opts))),
+      request <-  %{},
+      # request <-  Enum.reduce(@send_pre_checks, request, &(send_pre_check(&1, &2, opts))),
+      request <-  Enum.reduce(@send_fields, request, &(prepare_send_field(&1, &2, opts))),
       request <-  Enum.reduce(@send_post_checks, request, &(send_post_check(&1, &2, opts))),
 
       %Tesla.Env{body: body} <- post("/send.json", request)
@@ -92,6 +96,10 @@ defmodule ExSmsBliss.Json do
   Request active API version
   """
   def version
+
+  ###
+  # prepare_send_field
+  ##
 
   ##
   # :messages
@@ -171,12 +179,17 @@ defmodule ExSmsBliss.Json do
   ##
   # defp prepare_send_field(_, request, _), do: request
 
-  defp prepare_messages(messages, opts) when is_list(messages) do
+  defp prepare_messages(messages, opts) 
+    when is_list(messages) and length(messages) > 0 and length(messages) <= 200 
+  do
     messages
     |> Enum.map(&prepare_message(&1, opts))
   end
   defp prepare_messages(message, opts) when is_map(message) do
     prepare_messages([message], opts)
+  end
+  defp prepare_messages(_, _opts) do
+    raise ArgumentError, "It is possible to send from 1 up to 200 messages in a batch"
   end
 
   defp prepare_message(message, opts) when is_map(message) do

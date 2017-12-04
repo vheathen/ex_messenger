@@ -26,12 +26,18 @@ defmodule ExSmsBliss.JsonTest do
   describe "/send" do
 
     setup context do
+      num = 
+        case Map.get(context, :msgs_num) do
+          num when is_integer(num) -> num
+          _ -> 10
+        end
+
       msgs = 
         case Map.get(context, :msgs_type) do
-          :client_id -> messages(10, client_id: true)
-          :sender -> messages(10, client_id: false, sender: "SKB")
-          :client_id_sender -> messages(10, client_id: true, sender: "SKB")
-          _ -> messages(10, client_id: false)
+          :client_id -> messages(num, client_id: true)
+          :sender -> messages(num, client_id: false, sender: "SKB")
+          :client_id_sender -> messages(num, client_id: true, sender: "SKB")
+          _ -> messages(num, client_id: false)
         end
 
       {:ok, msgs: msgs}
@@ -53,6 +59,17 @@ defmodule ExSmsBliss.JsonTest do
 
       assert Map.has_key?(request, "messages")
       assert 1 == Map.get(request, "messages") |> Enum.count()
+    end
+
+    test "it must return :error is ones trying to send an empty list as a message list" do
+      assert {:error, _} = Json.send([])
+    end
+
+    @tag msgs_num: 201
+    test "it must return :error is ones trying to send more than 200 messages at a time", %{msgs: msgs} do
+      assert 201 == Enum.count(msgs)
+
+      assert {:error, _} = Json.send(msgs)      
     end
 
     test "it must put correct login/password if it is opts", %{msgs: msgs} do
@@ -254,4 +271,6 @@ defmodule ExSmsBliss.JsonTest do
     end
 
   end
+
+
 end
