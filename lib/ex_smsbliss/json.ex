@@ -12,6 +12,10 @@ defmodule ExSmsBliss.Json do
   @send_fields ~w(messages schedule_at request_billing queue_name login password)a
   @send_post_checks ~w(client_id_uniq)a
 
+  @message_status_fields ~w(client_id smsc_id)a
+  @status_fields ~w(messages login password)a
+  @status_post_checks ~w(client_id_uniq)a
+
   @phone_int_format ~r/\A\+?\d{11,15}\Z/m
   @phone_ru_match ~r/\A\+?7.*\Z/m
   @phone_ru_format ~r/\A\+?\d{11}\Z/m
@@ -75,7 +79,32 @@ defmodule ExSmsBliss.Json do
   @doc """
   Checks status of up to 200 messages per request
   """
-  def status #(messages, opts \\ [])
+  def status(messages, opts \\ []) do
+    try do
+      {:ok, status!(messages, opts)}
+    rescue
+      e -> {:error, e}
+    end
+  end
+
+  @doc """
+  A "danger" version of the `status/2`
+  """
+  def status!(messages, opts \\ []) do
+    with \
+      opts <-     Keyword.put(opts, :messages, messages),
+      request <-  %{},
+      request <-  Enum.reduce(@status_fields, request, &(prepare_status_field(&1, &2, opts))),
+      request <-  Enum.reduce(@status_post_checks, request, &(status_post_check(&1, &2, opts))),
+
+      %Tesla.Env{body: body} <- post("/status.json", request)
+    do
+      body
+    else
+      error -> error
+    end
+    
+  end
 
   @doc """
   Checks status queue of up to 1000 messages per request
@@ -96,6 +125,35 @@ defmodule ExSmsBliss.Json do
   Request active API version
   """
   def version
+
+  #########################################
+  # common
+  #########################################
+  ##
+  # :login
+  ##
+  defp prepare_send_field(:login, request, opts) do
+    login = Keyword.get(opts, :login)
+
+    if login && byte_size(login) > 0, 
+      do: Map.put(request, :login, login), 
+      else: request
+  end
+
+  ##
+  # :password
+  ##
+  defp prepare_send_field(:password, request, opts) do
+    password = Keyword.get(opts, :password)
+
+    if password && byte_size(password) > 0, 
+      do: Map.put(request, :password, password), 
+      else: request
+  end
+
+  #########################################
+  # send
+  #########################################
 
   ###
   # prepare_send_field
@@ -149,28 +207,6 @@ defmodule ExSmsBliss.Json do
 
     if queue_name, 
       do: Map.put(request, "statusQueueName", queue_name), 
-      else: request
-  end
-
-  ##
-  # :login
-  ##
-  defp prepare_send_field(:login, request, opts) do
-    login = Keyword.get(opts, :login)
-
-    if login && byte_size(login) > 0, 
-      do: Map.put(request, :login, login), 
-      else: request
-  end
-
-  ##
-  # :password
-  ##
-  defp prepare_send_field(:password, request, opts) do
-    password = Keyword.get(opts, :password)
-
-    if password && byte_size(password) > 0, 
-      do: Map.put(request, :password, password), 
       else: request
   end
 
@@ -318,6 +354,59 @@ defmodule ExSmsBliss.Json do
     raise ArgumentError, """
     :schedule_at parameter is in a wrong format. Please use either DateTime or a string properly formated according to ISO8601.
     """
+  end
+
+  ############################################
+  # status
+  ############################################
+  defp prepare_status_field(:password, request, opts), do: prepare_send_field(:password, request, opts)
+  defp prepare_status_field(:login, request, opts), do: prepare_send_field(:login, request, opts)
+
+  defp prepare_status_field(:messages, request, opts) do
+    messages = opts
+               |> Keyword.get(:messages)
+               |> prepare_status_requests(opts)
+
+    request
+    |> Map.put(:messages, messages)
+  end
+
+  defp prepare_status_requests(messages, opts) 
+    when is_list(messages) and length(messages) > 0 and length(messages) <= 200 
+  do
+    messages
+    |> Enum.map(&prepare_status_request(&1, opts))
+  end
+  defp prepare_status_requests(message, opts) when is_map(message) do
+    prepare_status_requests([message], opts)
+  end
+  defp prepare_status_requests(_, _opts) do
+    raise ArgumentError, "It is possible to request status of from 1 up to 200 messages in a batch"
+  end
+
+  defp prepare_status_request(message_status, opts) when is_map(message_status) do
+    @message_status_fields
+    |> Enum.reduce(%{}, &(prepare_status_field(&1, &2, message_status, opts)))
+  end
+  defp prepare_status_request(_, _) do
+    raise ArgumentError, "A message opts to request status must be a map"
+  end
+
+  defp prepare_status_field(:smsc_id, new, %{smsc_id: smsc_id}, _opts) 
+    when (is_binary(smsc_id) and byte_size(smsc_id) > 0) or is_integer(smsc_id) 
+  do
+    new |> Map.put(:smscId, smsc_id)
+  end
+  defp prepare_status_field(:smsc_id, _new, _, _opts) do
+    raise ArgumentError, "A status request must have :smsc_id field as a non-empty string or integer"
+  end
+
+  defp prepare_status_field(:client_id, new, status_request, opts) do
+    prepare_message_field(:client_id, new, status_request, opts)
+  end
+
+  defp status_post_check(:client_id_uniq, request, _opts) do
+    client_id_uniq?(request.messages, [], request)
   end
 
 end
