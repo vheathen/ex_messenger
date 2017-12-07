@@ -1,11 +1,9 @@
 defmodule ExSmsBliss.Application do
-  # See https://hexdocs.pm/elixir/Application.html
-  # for more information on OTP Applications
   @moduledoc false
-
   use Application
 
   def start(_type, _args) do
+    import Supervisor.Spec
 
     with \
       login <- System.get_env("EX_SMSBLISS_LOGIN"),
@@ -21,6 +19,7 @@ defmodule ExSmsBliss.Application do
       # List all child processes to be supervised
       children = 
           [
+            supervisor(ExSmsBliss.Storage.Postgrsql.Repo, []),
             # Starts a worker by calling: ExSmsBliss.Worker.start_link(arg)
             # {ExSmsBliss.Worker, arg},
           ]
