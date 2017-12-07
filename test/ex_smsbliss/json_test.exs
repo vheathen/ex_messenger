@@ -6,7 +6,7 @@ defmodule ExSmsBliss.JsonTest do
   alias ExSmsBliss.Json
   alias ExSmsBliss.TeslaMockJson
 
-  import ExSmsBliss.MessagesTestHelper
+  import ExSmsBliss.ApiTestHelper
   
   setup do
     TeslaMockJson.prepare()
@@ -17,19 +17,8 @@ defmodule ExSmsBliss.JsonTest do
   describe "/send" do
 
     setup context do
-      num = 
-        case Map.get(context, :msgs_num) do
-          num when is_integer(num) -> num
-          _ -> 10
-        end
 
-      msgs = 
-        case Map.get(context, :msgs_type) do
-          :client_id -> messages(num, client_id: true)
-          :sender -> messages(num, client_id: false, sender: "SKB")
-          :client_id_sender -> messages(num, client_id: true, sender: "SKB")
-          _ -> messages(num, client_id: false)
-        end
+      msgs = gen_messages(context)
 
       {:ok, msgs: msgs}
     end
@@ -43,7 +32,7 @@ defmodule ExSmsBliss.JsonTest do
     end
 
     test "it must be able to send a message" do
-      msg = message()
+      msg = gen_message()
 
       assert {:ok, reply} = Json.send(msg)
       assert %{"orig" => request} = reply
@@ -56,7 +45,7 @@ defmodule ExSmsBliss.JsonTest do
       assert {:error, _} = Json.send([])
     end
 
-    @tag msgs_num: 201
+    @tag amount: 201
     test "it must return :error is ones trying to send more than 200 messages at a time", %{msgs: msgs} do
       assert 201 == Enum.count(msgs)
 
@@ -109,7 +98,7 @@ defmodule ExSmsBliss.JsonTest do
       assert {:ok, _} = Json.send(msg)
     end
 
-    @tag msgs_type: :client_id
+    @tag :client_id
     test "it must put client_id to the result message", %{msgs: msgs} do
 
       assert {:ok, reply} = Json.send(msgs)
@@ -241,7 +230,7 @@ defmodule ExSmsBliss.JsonTest do
       assert {:error, _} = Json.send(msg, sender: sender)
     end
 
-    @tag msgs_type: :sender
+    @tag sender: "SKB"
     test "it must not replace message's :sender with an opts's value", %{msgs: msgs} do
       sender = "ANOTHER_ONE_SENDER"
 
@@ -265,17 +254,7 @@ defmodule ExSmsBliss.JsonTest do
 
   describe "/status" do
     setup context do
-      num = 
-        case Map.get(context, :msgs_num) do
-          num when is_integer(num) -> num
-          _ -> 10
-        end
-
-      msgs = 
-        case Map.get(context, :msgs_type) do
-          :client_id -> message_statuses(num, client_id: true)
-          _ -> message_statuses(num, client_id: false)
-        end
+      msgs = gen_message_statuses(context)
 
       {:ok, msgs: msgs}
     end
@@ -286,7 +265,7 @@ defmodule ExSmsBliss.JsonTest do
     end
 
     test "it must be able to request a message status" do
-      msg = message_status()
+      msg = gen_message_status()
 
       assert {:ok, reply} = Json.status(msg)
       assert %{"orig" => request} = reply
@@ -299,7 +278,7 @@ defmodule ExSmsBliss.JsonTest do
       assert {:error, _} = Json.status([])
     end
 
-    @tag msgs_num: 201
+    @tag amount: 201
     test "it must return :error is ones trying to request a status of more than 200 messages at a time", %{msgs: msgs} do
       assert 201 == Enum.count(msgs)
 
@@ -338,7 +317,7 @@ defmodule ExSmsBliss.JsonTest do
       |> Enum.each(&(assert Map.get(&1, "smscId")))
     end
 
-    @tag msgs_type: :client_id
+    @tag :client_id
     test "it must put client_id to the result message", %{msgs: msgs} do
 
       assert {:ok, reply} = Json.status(msgs)
