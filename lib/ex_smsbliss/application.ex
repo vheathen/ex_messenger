@@ -2,6 +2,8 @@ defmodule ExSmsBliss.Application do
   @moduledoc false
   use Application
 
+  require Logger
+
   def start(_type, _args) do
     import Supervisor.Spec
 
@@ -9,17 +11,18 @@ defmodule ExSmsBliss.Application do
       login <- System.get_env("EX_SMSBLISS_LOGIN"),
       pass  <- System.get_env("EX_SMSBLISS_PASSWORD"),
       auth  <- Application.get_env(:ex_smsbliss, :auth) || [],
-      auth  <- (if is_nil(login), do: auth, else: Keyword.put(auth, :login, login)),
-      auth  <- (if is_nil(pass), do: auth, else: Keyword.put(auth, :password, pass)),
+      auth  <- (if is_nil(login),
+                  do: auth, else: Keyword.put(auth, :login, login)),
+      auth  <- (if is_nil(pass),
+                  do: auth, else: Keyword.put(auth, :password, pass)),
       false <- is_nil(Keyword.get(auth, :login)),
       false <- is_nil(Keyword.get(auth, :password)),
       _     <- Application.put_env(:ex_smsbliss, :auth, auth)
     do
 
       # List all child processes to be supervised
-      children = 
+      children =
           [
-            supervisor(ExSmsBliss.Storage.Postgrsql.Repo, []),
             # Starts a worker by calling: ExSmsBliss.Worker.start_link(arg)
             # {ExSmsBliss.Worker, arg},
           ]
@@ -45,7 +48,7 @@ defmodule ExSmsBliss.Application do
         The last option has preference over the configuration file settings.
 
         Please check documentation at https://hexdocs.pm/ex_smsbliss
-        """      
+        """
     end
 
   end

@@ -1,4 +1,4 @@
-defmodule ExSmsBliss.Storage.Postgrsql.Repo do
+defmodule ExSmsBliss.Storage.Postgresql.Repo do
   use Ecto.Repo, otp_app: :ex_smsbliss
 
   @doc """

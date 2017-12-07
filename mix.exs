@@ -9,6 +9,7 @@ defmodule ExSmsBliss.Mixfile do
       elixirc_paths: elixirc_paths(Mix.env),
       start_permanent: Mix.env == :prod,
       deps: deps(),
+      aliases: aliases(),
 
       name: "ExSmsBliss",
       source_url: "https://github.com/vheathen/ex_smsbliss",
@@ -33,7 +34,7 @@ defmodule ExSmsBliss.Mixfile do
   end
 
   # Specifies which paths to compile per environment.
-  defp elixirc_paths([:test, :dev]), do: ["lib", "test/support"]
+  defp elixirc_paths(:test), do: ["lib", "test/support"]
   defp elixirc_paths(_),     do: ["lib"]
 
   # Run "mix help deps" to learn about dependencies.
@@ -52,6 +53,13 @@ defmodule ExSmsBliss.Mixfile do
       {:faker, "~> 0.9", only: [:test, :dev]},
       {:credo, "~> 0.8", only: [:dev, :test], runtime: false},
       {:mix_test_watch, path: "/home/vlad/ProjectsLocal/mix-test.watch", only: :dev, runtime: false}, #"~> 0.5", only: :dev, runtime: false},
+    ]
+  end
+
+  defp aliases do
+    [
+      # Ensures database is reset before tests are run
+      "test": ["ecto.create --quiet", "ecto.migrate", "test"]
     ]
   end
 end
