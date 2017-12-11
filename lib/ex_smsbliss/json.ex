@@ -192,7 +192,7 @@ defmodule ExSmsBliss.Json do
     request_billing =
       if Keyword.has_key?(opts, :request_billing), 
         do: Keyword.get(opts, :request_billing),
-        else: Config.get(:request_billing_on_send)
+        else: request_billing?
 
     if request_billing, 
       do: Map.put(request, "showBillingDetails", true), 
@@ -409,4 +409,8 @@ defmodule ExSmsBliss.Json do
     client_id_uniq?(request.messages, [], request)
   end
 
+  defp request_billing?() do
+    Config.get(__MODULE__)
+    |> Keyword.get(:request_billing_on_send)
+  end
 end

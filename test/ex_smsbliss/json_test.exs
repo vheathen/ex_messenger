@@ -1,5 +1,5 @@
 defmodule ExSmsBliss.JsonTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: false
   doctest ExSmsBliss.Json
 
   alias ExSmsBliss.Config
@@ -132,53 +132,6 @@ defmodule ExSmsBliss.JsonTest do
       assert Map.get(request, "password")
     end
 
-    test "it must request billing details if config option :request_billing_on_send is true", %{msgs: msgs} do
-      current_state = Config.get(:request_billing_on_send)
-
-      Application.put_env(:ex_smsbliss, :request_billing_on_send, true)
-      assert {:ok, reply} = Json.send(msgs)
-      Application.put_env(:ex_smsbliss, :request_billing_on_send, current_state)
-
-      assert %{"orig" => request} = reply
-      assert true == Map.get(request, "showBillingDetails")
-      
-    end
-
-    test "it must NOT request billing details if config option :request_billing_on_send is false", %{msgs: msgs} do
-      current_state = Config.get(:request_billing_on_send)
-
-      Application.put_env(:ex_smsbliss, :request_billing_on_send, false)
-      assert {:ok, reply} = Json.send(msgs)
-      Application.put_env(:ex_smsbliss, :request_billing_on_send, current_state)
-
-      assert %{"orig" => request} = reply
-      refute Map.get(request, "showBillingDetails")
-      
-    end
-
-    test "it must request billing details if config option :request_billing_on_send is false but true in opts", %{msgs: msgs} do
-      current_state = Config.get(:request_billing_on_send)
-
-      Application.put_env(:ex_smsbliss, :request_billing_on_send, false)
-      assert {:ok, reply} = Json.send(msgs, request_billing: true)
-      Application.put_env(:ex_smsbliss, :request_billing_on_send, current_state)
-
-      assert %{"orig" => request} = reply
-      assert true == Map.get(request, "showBillingDetails")
-      
-    end
-
-    test "it must NOT request billing details if config option :request_billing_on_send is true but false in opts", %{msgs: msgs} do
-      current_state = Config.get(:request_billing_on_send)
-
-      Application.put_env(:ex_smsbliss, :request_billing_on_send, true)
-      assert {:ok, reply} = Json.send(msgs, request_billing: false)
-      Application.put_env(:ex_smsbliss, :request_billing_on_send, current_state)
-
-      assert %{"orig" => request} = reply
-      refute Map.get(request, "showBillingDetails")      
-    end
-
     test "it must NOT set schedule time by default", %{msgs: msgs} do
       assert {:ok, reply} = Json.send(msgs)
       assert %{"orig" => request} = reply
@@ -250,6 +203,54 @@ defmodule ExSmsBliss.JsonTest do
       assert queue_name == Map.get(request, "statusQueueName")
     end
 
+  end
+
+  describe ":request_billing_on_send" do
+    setup %{req_bill?: req_bill} = context do
+      current_state = Config.get(ExSmsBliss.Json)
+      on_exit fn ->
+        Application.put_env(:ex_smsbliss, ExSmsBliss.Json, current_state)
+      end    
+
+      opts = Keyword.put(current_state, :request_billing_on_send, req_bill)
+      Application.put_env(:ex_smsbliss, ExSmsBliss.Json, opts)
+
+
+      msgs = gen_messages(context)      
+      {:ok, msgs: msgs}
+    end
+
+    @tag req_bill?: true
+    test "it must request billing details if config option :request_billing_on_send is true", %{msgs: msgs} do
+      assert {:ok, reply} = Json.send(msgs)
+
+      assert %{"orig" => request} = reply
+      assert true == Map.get(request, "showBillingDetails")      
+    end
+
+    @tag req_bill?: false
+    test "it must NOT request billing details if config option :request_billing_on_send is false", %{msgs: msgs} do
+      assert {:ok, reply} = Json.send(msgs)
+
+      assert %{"orig" => request} = reply
+      refute Map.get(request, "showBillingDetails")      
+    end
+
+    @tag req_bill?: false
+    test "it must request billing details if config option :request_billing_on_send is false but true in opts", %{msgs: msgs} do
+      assert {:ok, reply} = Json.send(msgs, request_billing: true)
+
+      assert %{"orig" => request} = reply
+      assert true == Map.get(request, "showBillingDetails")      
+    end
+
+    @tag req_bill?: true
+    test "it must NOT request billing details if config option :request_billing_on_send is true but false in opts", %{msgs: msgs} do
+      assert {:ok, reply} = Json.send(msgs, request_billing: false)
+
+      assert %{"orig" => request} = reply
+      refute Map.get(request, "showBillingDetails")      
+    end
   end
 
   describe "/status" do

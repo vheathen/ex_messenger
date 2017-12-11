@@ -14,8 +14,23 @@ defmodule ExSmsBliss.ConfigTest do
     assert Config.get(:auth) == Application.get_env(:ex_smsbliss, :auth)
   end
 
-  test ":request_billing_on_send should be true by default" do
-    assert true == Config.get(:request_billing_on_send)
+  test "general config must have correct defaults" do
+    assert 2_000 == Config.get(:poll_interval)
+    assert 2_000 == Config.get(:status_check_interval)
+
+    assert 120_000 == Config.get(:send_timeout)
+    assert 300_000 == Config.get(:clean_after)
+
+    assert false == Config.get(:push)
+
+    assert ExSmsBliss.Json == Config.get(:sms_adapter)
+  end
+
+  test "sms adapter specific settings must have correct defaults" do
+    opts = Config.get(ExSmsBliss.Json)
+
+    assert Keyword.get(opts, :api_base) == "http://api.smsbliss.net/messages/v2/"
+    assert Keyword.get(opts, :request_billing_on_send) == true
   end
   
 end

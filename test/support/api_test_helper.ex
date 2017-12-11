@@ -53,7 +53,7 @@ defmodule ExSmsBliss.ApiTestHelper do
   defp put_field(map, key = :client_id, value) do
     case value do
       nil -> map
-      _ -> Map.put(map, key, Ecto.UUID.generate())
+      _ -> Map.put(map, key, UUID.uuid4())
     end
   end
 

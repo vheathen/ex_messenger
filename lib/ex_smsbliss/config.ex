@@ -2,8 +2,17 @@ defmodule ExSmsBliss.Config do
   @moduledoc false
 
   @defaults %{
-        api_base: "http://api.smsbliss.net/messages/v2/",
-        request_billing_on_send: true, # should it request billing details on each send message\messages?
+        :sms_adapter => ExSmsBliss.Json,
+        ExSmsBliss.Json => [
+          api_base: "http://api.smsbliss.net/messages/v2/",
+          request_billing_on_send: true # should it request billing details on each send message\messages?
+        ],
+
+        poll_interval: 2_000, # an inteval between new messages check for batch sending
+        status_check_interval: 2_000, # an interval between sent messages status check
+
+        send_timeout: 120_000, # timeout before failing 
+        clean_after: 300_000, # max time to keep sms
 
         push: false,    # do not reply to the sender by default (wait for a result request)
         auth: []
