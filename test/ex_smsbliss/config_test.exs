@@ -17,9 +17,10 @@ defmodule ExSmsBliss.ConfigTest do
   test "general config must have correct defaults" do
     assert 2_000 == Config.get(:poll_interval)
     assert 2_000 == Config.get(:status_check_interval)
+    assert 2_000 == Config.get(:cleanup_interval)
 
     assert 120_000 == Config.get(:send_timeout)
-    assert 300_000 == Config.get(:clean_after)
+    assert 300_000 == Config.get(:max_age)
 
     assert false == Config.get(:push)
 

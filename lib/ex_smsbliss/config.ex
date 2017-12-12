@@ -10,9 +10,10 @@ defmodule ExSmsBliss.Config do
 
         poll_interval: 2_000, # an inteval between new messages check for batch sending
         status_check_interval: 2_000, # an interval between sent messages status check
+        cleanup_interval: 2_000, # an interval between clean up
 
         send_timeout: 120_000, # timeout before failing 
-        clean_after: 300_000, # max time to keep sms
+        max_age: 300_000, # max time to keep sms
 
         push: false,    # do not reply to the sender by default (wait for a result request)
         auth: []
