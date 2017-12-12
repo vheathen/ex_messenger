@@ -3,9 +3,11 @@ defmodule ExSmsBliss.ApiTestHelper do
   @option_keys [:amount, :sender, :client_id, :schedule_at]
   
   def gen_message(opts \\ %{}) do
+    text = if opts[:reject], do: "st:reject", else: ""
+
     message = %{
                   phone: Faker.Phone.EnGb.landline_number |> String.replace("+44", "79"),
-                  text: Faker.Lorem.Shakespeare.Ru.hamlet
+                  text: text <> Faker.Lorem.Shakespeare.Ru.hamlet
                 }
 
     @option_keys
