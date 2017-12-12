@@ -1,13 +1,18 @@
 defmodule ExSmsBliss.TeslaMockJson do
 
-@statuses  ["accepted",
-            "invalid mobile phone",
-            "text is empty",
-            "sender address invalid",
-            "wapurl invalid",
-            "invalid schedule time format",
-            "invalid status queue name",
-            "not enough balance"]
+  @send_statuses  [ #"accepted",
+                    "invalid mobile phone",
+                    "text is empty",
+                    "sender address invalid",
+                    "wapurl invalid",
+                    "invalid schedule time format",
+                    "invalid status queue name",
+                    "not enough balance"]
+
+  @end_statuses   [ "delivered", 
+                    "delivery error",
+                    "smsc reject",
+                    "incorrect id"]
 
   def prepare do
     Tesla.Mock.mock fn env ->
@@ -17,7 +22,7 @@ defmodule ExSmsBliss.TeslaMockJson do
 
   def prepare_global do
     Tesla.Mock.mock_global fn env ->
-      Process.sleep(100)
+      Process.sleep(50)
       react(env)
     end
   end
@@ -58,6 +63,11 @@ defmodule ExSmsBliss.TeslaMockJson do
     |> answer_the_message()
     |> Map.put(:clientId, clientId)
   end
+  def answer_the_message(%{"text" => "st:reject" <> text}) do
+    answer_the_message(%{"text" => text})
+    |> Map.delete(:smscId)
+    |> Map.put(:status, Enum.at(@send_statuses, :rand.uniform(length(@send_statuses)) - 1))
+  end
   def answer_the_message(%{"text" => text}) do
     count = text |> byte_size() |> div(140) |> Kernel.+(1)
     cost = 1.64 * count
@@ -93,7 +103,7 @@ defmodule ExSmsBliss.TeslaMockJson do
   end
   def status_of_the_message(%{"smscId" => smscId}) do
     %{
-      "status" => Enum.random(@statuses),
+      "status" => Enum.random(@end_statuses),
       "smscId" => smscId
     }
   end
