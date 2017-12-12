@@ -6,12 +6,16 @@ defmodule ExSmsBliss.Manager do
   
   alias ExSmsBliss.Config
   alias ExSmsBliss.Storage.Ets
-  
+
   @doc """
   Returns queue: a message list # TODO: with a given status and higher
   """
   def get_queue(state \\ :all) do
     Ets.get_by_state(state, __MODULE__)
+  end
+
+  def count_queue(state \\ :all) do
+    Ets.count(state, __MODULE__)
   end
 
   def queue(%{} = message) do
@@ -56,10 +60,7 @@ defmodule ExSmsBliss.Manager do
 
   def handle_info(:send, state) do
     spawn fn ->
-      __MODULE__
-      |> Ets.prepare_send_queue()
-      |> prepare_bundles()
-      |> send_bundles()
+      send()
 
       schedule_sending(state)
     end
@@ -70,6 +71,13 @@ defmodule ExSmsBliss.Manager do
   ##
   # Private part
   ##
+
+  defp send() do
+    __MODULE__
+    |> Ets.prepare_send_queue()
+    |> prepare_bundles()
+    |> send_bundles()    
+  end
 
   # TODO: Move to sms adapter ?
   defp prepare_bundles(queue) when is_list(queue) do
@@ -93,20 +101,25 @@ defmodule ExSmsBliss.Manager do
     end)
   end
 
+  # TODO: Work with return statues
   defp send_bundle(schedule_at, bundle) do
     spawn fn -> 
       
       with \
-        {:ok, %{"messages" => messages}} <- sms().send(bundle, prepare_send_opts(schedule_at))
+        {:ok, response} <- sms().send(bundle, prepare_send_opts(schedule_at))
       do
-        # IO.inspect "Msgs: #{inspect messages}"
-        Enum.each(messages, &(update_message(&1)))
+        parse_response(response)
       else
         error ->
           raise ArgumentError, error
       end
       
     end
+  end
+
+  defp parse_response(%{"messages" => messages} = _response) do
+    # IO.inspect "Msgs: #{inspect messages}"
+    Enum.each(messages, &(update_message(&1)))        
   end
 
   defp prepare_send_opts(:none), do: []

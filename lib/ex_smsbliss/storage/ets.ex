@@ -2,6 +2,8 @@ defmodule ExSmsBliss.Storage.Ets do
   @behaviour ExSmsBliss.Storage
   @moduledoc false
 
+  import Ex2ms
+  
   alias ExSmsBliss.Manager
 
   # id, 
@@ -13,8 +15,6 @@ defmodule ExSmsBliss.Storage.Ets do
   # schedule_at, smsc_id, created_at, updated_at, 
   # subscriber - creator process's pid
   # _id, _state, _status, _phone, _text, _sender, _schedule_at, _smsc_id, _created_at, _updated_at, _subscriber
-
-  # import Ex2ms
 
   # Fields order is important as it is used to build a tuple to keep in ets table
   @fields  [:id,
@@ -80,20 +80,24 @@ defmodule ExSmsBliss.Storage.Ets do
     :ets.foldl(f, [], tbl(pref, state))
   end
 
+  def count(:all, pref) do
+    f = Ex2ms.fun do _ -> true end
+    :ets.select_count(pref, f)
+  end
+  def count(state, pref) do
+    f = Ex2ms.fun do _ -> true end
+    :ets.select_count(tbl(pref, state), f)
+  end
+
   def add(message, pref) do
     rec = build_record(message, pref)
     id = get_id(rec)
 
     true = :ets.insert(pref, rec)
+    true = :ets.insert(tbl(pref, :queued), {id})
 
-    # TODO: weird error with race conditions?
-    if [] == :ets.lookup(pref, id) do
-      add(message, pref)
-    else
-      true = :ets.insert(tbl(pref, :queued), {id})
+    {:ok, id}
 
-      {:ok, id}
-    end  
   end
 
   def prepare_send_queue(pref) do
@@ -112,20 +116,18 @@ defmodule ExSmsBliss.Storage.Ets do
 
     new_state = Map.get(changes, :state)
 
-    [rec] = :ets.lookup(pref, id)
 
-    new_rec = rec
-              |> inject_state(get_state(id, pref))
-              |> build_message()
-              |> Map.merge(changes)
-              |> Map.put(:updated_at, now() |> DateTime.from_unix!(:millisecond))
-              |> build_record(pref)
+    updates = changes
+              |> Map.put(:updated_at, now())
+              |> build_updates()
 
-    true = :ets.insert(pref, new_rec)
-
+    true = :ets.update_element(pref, id, updates)
     update_state(id, new_state, pref)
 
-    Manager.notify(id, get_subscriber(rec), new_state, Map.delete(changes, :state))
+    notice = changes |> Map.delete(:state)
+
+    [rec] = :ets.lookup(pref, id)
+    Manager.notify(id, get_subscriber(rec), new_state, notice)
   end
   
 
@@ -135,6 +137,19 @@ defmodule ExSmsBliss.Storage.Ets do
       :ets.delete_all_objects(tbl(pref, state))
     end
   end
+
+  # create a structure for :ets.update_element/3
+  defp build_updates(changes) do
+    changes
+    |> Enum.reduce([], &add_element_to_update/2)
+  end
+
+  #   1    2       3     4      5         6          7         8           9            10
+  # {id, status, phone, text, sender, schedule_at, smsc_id, created_at, updated_at, subscriber}
+  defp add_element_to_update({:smsc_id,    value}, changes), do: changes ++ [{7, value}]
+  defp add_element_to_update({:status,     value}, changes), do: changes ++ [{2, value}]
+  defp add_element_to_update({:updated_at, value}, changes), do: changes ++ [{9, value}]
+  defp add_element_to_update(_,                    changes), do: changes
 
   defp get_message(id, state, pref) do
 

@@ -54,7 +54,7 @@ defmodule ExSmsBlissTest.ManagerTest do
         assert {:ok, _} = Manager.queue(msg)
       end
 
-      assert 100 == length(Manager.get_queue())
+      assert 100 == Manager.count_queue()
     end
 
   end
@@ -84,17 +84,19 @@ defmodule ExSmsBlissTest.ManagerTest do
     @tag amount: 10, sender: "SKB10"
     test "every X timeunits it must change all :queued messages to :sending", %{amount: amount} do
 
-      assert amount == length(Manager.get_queue(:queued))
-      assert 0 == length(Manager.get_queue(:sending))
+      assert amount == Manager.count_queue(:queued)
+      assert 0 == Manager.count_queue(:sending)
 
       for i <- 1..2 do
         Process.sleep(40)
         msgs = gen_messages(%{amount: amount})
         Enum.each(msgs, &(Manager.queue(&1)))
 
-        assert amount == length(Manager.get_queue(:queued))
-        assert amount * i == length(Manager.get_queue(:sending))
+        assert amount == Manager.count_queue(:queued)
+        assert amount * i == Manager.count_queue(:sending)
       end
+
+      Process.sleep(200)
     end
 
     @tag amount: 500, sender: "SKB1"
@@ -155,14 +157,14 @@ defmodule ExSmsBlissTest.ManagerTest do
     # @tag amount: 50000, timeout: 120_000
     # test "try to send many messages", %{amount: amount} do
     #   refute_received {:ex_smsbliss, _, :sending, _}
-    #   assert length(Manager.get_queue()) == amount
+    #   assert Manager.count_queue() == amount
 
     #   assert_receive {:ex_smsbliss, _, :sending, _}, 10000
-    #   assert length(Manager.get_queue()) == amount
+    #   assert Manager.count_queue() == amount
 
     #   refute_receive {:ex_smsbliss, _, :sent, _}, 20000
 
-    #   assert length(Manager.get_queue()) == amount
+    #   assert Manager.count_queue() == amount
     # end
 
   end
@@ -172,17 +174,18 @@ defmodule ExSmsBlissTest.ManagerTest do
 
     @tag amount: 5_000, timeout: 120_000, poll_interval: 500
     test "check queue length", %{amount: amount} do
-      assert length(Manager.get_queue()) == amount
+      assert Manager.count_queue() == amount
       Process.sleep(600)
-      assert length(Manager.get_queue()) == amount
+      assert Manager.count_queue() == amount
     end
 
   end
 
   defp manager(context) do
     poll_interval = Map.get(context, :poll_interval, 30)
-
     {:ok, pid} = Manager.start_link(poll_interval: poll_interval)
+
+    on_exit fn -> Process.sleep(200) end
 
     [manager_pid: pid]
   end
