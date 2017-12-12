@@ -11,20 +11,31 @@ defmodule ExSmsBliss.TeslaMockJson do
 
   def prepare do
     Tesla.Mock.mock fn env ->
-      case {env.method, env.url, env.body} do
-
-        {:post, "https://api.smsbliss.net/messages/v2/send.json", body} ->
-
-          %Tesla.Env{status: 200, body: reply_to_send(Poison.decode!(body))}
-          |> Tesla.Middleware.Headers.call([], %{"content-type" => "application/json"})
-
-        {:post, "https://api.smsbliss.net/messages/v2/status.json", body} ->
-
-          %Tesla.Env{status: 200, body: reply_to_status(Poison.decode!(body))}
-          |> Tesla.Middleware.Headers.call([], %{"content-type" => "application/json"})
-
-      end
+      react(env)
     end
+  end
+
+  def prepare_global do
+    Tesla.Mock.mock_global fn env ->
+      Process.sleep(100)
+      react(env)
+    end
+  end
+
+  def react(env) do
+    case {env.method, env.url, env.body} do
+
+      {:post, "https://api.smsbliss.net/messages/v2/send.json", body} ->
+
+        %Tesla.Env{status: 200, body: reply_to_send(Poison.decode!(body))}
+        |> Tesla.Middleware.Headers.call([], %{"content-type" => "application/json"})
+
+      {:post, "https://api.smsbliss.net/messages/v2/status.json", body} ->
+
+        %Tesla.Env{status: 200, body: reply_to_status(Poison.decode!(body))}
+        |> Tesla.Middleware.Headers.call([], %{"content-type" => "application/json"})
+      
+    end          
   end
 
   def reply_to_send(body) do
