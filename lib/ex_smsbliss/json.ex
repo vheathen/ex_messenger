@@ -410,7 +410,8 @@ defmodule ExSmsBliss.Json do
   end
 
   defp request_billing?() do
-    Config.get(__MODULE__)
+    __MODULE__
+    |> Config.get()
     |> Keyword.get(:request_billing_on_send)
   end
 end
