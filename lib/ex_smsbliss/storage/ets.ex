@@ -36,8 +36,8 @@ defmodule ExSmsBliss.Storage.Ets do
     # :sent - when a message is sent to the service
     # :failured - when sending is failed (service is unreachable and so on)
     # :finished - after a message came to the last life period from the service point of view
-  @states [:queued, :sending, :rejected, :sent, :failed, :finished, :error]
-  @finished [:rejected, :failed, :finished, :error]
+  @states [:queued, :sending, :rejected, :sent, :failed, :finished, :error, :expired]
+  @finished [:rejected, :failed, :finished, :error, :expired]
 
   def storage_init(pref) do
     :ets.new(pref, [:named_table, :set, :public,
@@ -116,24 +116,28 @@ defmodule ExSmsBliss.Storage.Ets do
   
   def update_message(id, changes, pref) do
 
-    new_state = Map.get(changes, :state)
-    [rec] = :ets.lookup(pref, id)
-    notice = changes |> Map.delete(:state)
-    
-    if Config.get(:push) && (new_state in @finished) do
-      state = get_state(id, pref)
-      :ets.delete(tbl(pref, state), id)
-      :ets.delete(pref, id)
-    else
-      updates = changes
-                |> Map.put(:updated_at, now())
-                |> build_updates()
+    # Get record first and check it existence
+    rec = pref |> :ets.lookup(id) |> Enum.at(0)
 
-      true = :ets.update_element(pref, id, updates)
-      update_state(id, new_state, pref)
+    if rec do
+      new_state = Map.get(changes, :state)
+      notice = changes |> Map.delete(:state)
+      
+      if Config.get(:push) && (new_state in @finished) do
+        state = get_state(id, pref)
+        :ets.delete(tbl(pref, state), id)
+        :ets.delete(pref, id)
+      else
+        updates = changes
+                  |> Map.put(:updated_at, now())
+                  |> build_updates()
+
+        true = :ets.update_element(pref, id, updates)
+        update_state(id, new_state, pref)
+      end
+    
+      Manager.notify(id, get_subscriber(rec), new_state, notice)
     end
-  
-    Manager.notify(id, get_subscriber(rec), new_state, notice)
   end  
 
   def cleanup(0, pref) do
@@ -141,6 +145,33 @@ defmodule ExSmsBliss.Storage.Ets do
     for state <- @states do
       :ets.delete_all_objects(tbl(pref, state))
     end
+  end
+
+  def expire(timeout, pref) do
+    expire_before = now() - timeout
+
+    f = 
+      Ex2ms.fun do {id, status, _, _, _, _, smsc_id, created_at, _, subscriber} 
+        when created_at < ^expire_before -> 
+          {id, status, smsc_id, subscriber}
+        end
+
+    pref
+    |> :ets.select(f)
+    |>  Enum.each(fn {id, status, smsc_id, sub} -> 
+
+          state = get_state(id, pref)
+          notice = %{}
+                   |> Map.put(:last_state, state)
+                   |> Map.put(:smsc_id, smsc_id)
+                   |> Map.put(:status, status)
+
+          :ets.delete(tbl(pref, state), id)
+          :ets.delete(pref, id)
+
+          Manager.notify(id, sub, :expired, notice)
+        end)
+
   end
 
   # def clean_finished(max_age, pref) do
@@ -168,14 +199,13 @@ defmodule ExSmsBliss.Storage.Ets do
     |> build_message()
   end
   
+  # credo:disable-for-lines:24
   defp build_record(message, pref) do
     now = now()
 
-    Enum.reduce(@fields, {}, 
-      fn field, acc -> 
+    Enum.reduce(@fields, {}, fn field, acc -> 
 
         value =
-          # credo:disable-for-lines:13
           case field do
             :id -> Map.get(message, :client_id, gen_safe_uuid(pref))
             # :state -> :queued
@@ -191,6 +221,7 @@ defmodule ExSmsBliss.Storage.Ets do
           end
         
         Tuple.append(acc, value)
+
       end)
   end
 

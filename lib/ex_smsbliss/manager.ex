@@ -55,23 +55,26 @@ defmodule ExSmsBliss.Manager do
               # cleanup_interval:
               #   Keyword.get(opts, :cleanup_interval) || Config.get(:cleanup_interval),
               # max_age:
-              #   Keyword.get(opts, :max_age) || Config.get(:max_age)
+              #   Keyword.get(opts, :max_age) || Config.get(:max_age),
+              send_timeout:
+                Keyword.get(opts, :send_timeout) || Config.get(:send_timeout),
               }
 
     {:ok, _} = Ets.storage_init(__MODULE__)
 
-    schedule_sending(state)
+    schedule_poll(state)
     schedule_status_check(state)
     # schedule_clean(state)
     
     {:ok, state}
   end
 
-  def handle_info(:send, state) do
+  def handle_info(:poll, state) do
     spawn fn ->
       send()
-
-      schedule_sending(state)
+      expire(state)
+      
+      schedule_poll(state)
     end
 
     {:noreply, state}
@@ -100,6 +103,10 @@ defmodule ExSmsBliss.Manager do
   ##
   # Private part
   ##
+
+  defp expire(%{send_timeout: send_timeout}) do
+    Ets.expire(send_timeout, __MODULE__)
+  end
 
   # defp clean_expired(%{max_age: max_age}) do
   #   Ets.clean_finished(max_age, __MODULE__)
@@ -168,7 +175,6 @@ defmodule ExSmsBliss.Manager do
     end)
   end
 
-  # TODO: Work with return statues
   defp send_bundle(schedule_at, bundle) do
     spawn fn -> 
       
@@ -236,8 +242,8 @@ defmodule ExSmsBliss.Manager do
     Ets.update_message(changes.client_id, changes, __MODULE__)
   end
 
-  defp schedule_sending(%{poll_interval: poll_interval}) do
-    Process.send_after(__MODULE__, :send, poll_interval)
+  defp schedule_poll(%{poll_interval: poll_interval}) do
+    Process.send_after(__MODULE__, :poll, poll_interval)
   end
 
   defp schedule_status_check(%{status_check_interval: status_check_interval}) do

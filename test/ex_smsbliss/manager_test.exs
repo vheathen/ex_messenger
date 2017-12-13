@@ -9,6 +9,7 @@ defmodule ExSmsBlissTest.ManagerTest do
   @poll 50
   @check 100
   @clean 100
+  @send_timeout 10_000
 
   setup_all do
     TeslaMockJson.prepare_global()
@@ -77,13 +78,13 @@ defmodule ExSmsBlissTest.ManagerTest do
       assert 0 == Manager.count_queue(:sending)
 
       for id <- ids do
-        assert_receive {:ex_smsbliss, ^id, :sending, _}, round(@poll * 1.3)
+        assert_receive {:ex_smsbliss, ^id, :sending, _}, round(@poll * 1.5)
       end
       
       Enum.each(msgs, &(Manager.queue(&1)))
       
       for _ <- 1..amount do
-        assert_receive {:ex_smsbliss, _, :sending, _}, round(@poll * 1.3)
+        assert_receive {:ex_smsbliss, _, :sending, _}, round(@poll * 1.5)
         assert_received {:ex_smsbliss, _, :sent, _}        
       end
     end
@@ -182,8 +183,8 @@ defmodule ExSmsBlissTest.ManagerTest do
       Process.sleep(@check * 4)
       
       for id <- ids do
-        assert_received {:ex_smsbliss, ^id, :sending, _}, round(@poll * 1.2)
-        assert_received {:ex_smsbliss, ^id, :sent, %{smsc_id: _, status: "accepted"}}, round(@poll * 1.2)
+        assert_received {:ex_smsbliss, ^id, :sending, _}
+        assert_received {:ex_smsbliss, ^id, :sent, %{smsc_id: _, status: "accepted"}}
         assert_received {:ex_smsbliss, ^id, :sent, %{smsc_id: _, status: "queued"}}
         assert_received {:ex_smsbliss, ^id, :sent, %{smsc_id: _, status: "queued"}}
         assert_received {:ex_smsbliss, ^id, :sent, %{smsc_id: _, status: "queued"}}
@@ -205,8 +206,8 @@ defmodule ExSmsBlissTest.ManagerTest do
       Process.sleep(@check * 4)
       
       for id <- ids do
-        assert_received {:ex_smsbliss, ^id, :sending, _}, round(@poll * 1.2)
-        assert_received {:ex_smsbliss, ^id, :sent, %{smsc_id: _, status: "accepted"}}, round(@poll * 1.2)
+        assert_received {:ex_smsbliss, ^id, :sending, _}
+        assert_received {:ex_smsbliss, ^id, :sent, %{smsc_id: _, status: "accepted"}}
         assert_received {:ex_smsbliss, ^id, :sent, %{smsc_id: _, status: "queued"}}
         assert_received {:ex_smsbliss, ^id, :sent, %{smsc_id: _, status: "queued"}}
         assert_received {:ex_smsbliss, ^id, :sent, %{smsc_id: _, status: "queued"}}
@@ -240,8 +241,33 @@ defmodule ExSmsBlissTest.ManagerTest do
 
   end
 
-  describe "expire messages:" do
-    # setup 
+  describe "expire messages after send_timeout:" do
+    setup [:queue_msgs]
+
+    @tag amount: 10, send_timeout: 200
+    test "it must not send :expired notification if messages delivered", %{qids: ids, send_timeout: timeout} do
+      Process.sleep(round(timeout * 1.1))
+      for id <- ids do
+        refute_received {:ex_smsbliss, ^id, :expired, _}
+        assert_received {:ex_smsbliss, ^id, :sending, _}
+        assert_received {:ex_smsbliss, ^id, :sent, _}
+        assert_received {:ex_smsbliss, ^id, :finished, _}
+      end
+    end
+
+    @tag amount: 10, sms_adapter: FakeSmsStatusQueued, send_timeout: 200
+    test "it must send :expired notification and clean messages if they aren't delivered", %{qids: ids, send_timeout: timeout} do
+      Process.sleep(round(timeout * 1.5))
+      for id <- ids do
+        assert_received {:ex_smsbliss, ^id, :sending, _}
+        assert_received {:ex_smsbliss, ^id, :sent, _}
+        assert_received {:ex_smsbliss, ^id, :expired, _}
+        refute_received {:ex_smsbliss, ^id, :finished, _}
+      end
+
+      assert 0 == Manager.count_queue()
+    end
+        
   end
 
   # TODO: Return to this after important parts
@@ -253,7 +279,7 @@ defmodule ExSmsBlissTest.ManagerTest do
     #   on_exit fn -> Process.sleep(1000) end
     # end
 
-    # @tag amount: 50000, timeout: 120_000
+    # @tag amount: 50000, send_timeout: 120_000
     # test "try to send many messages", %{amount: amount} do
     #   refute_received {:ex_smsbliss, _, :sending, _}
     #   assert Manager.count_queue() == amount
@@ -273,11 +299,13 @@ defmodule ExSmsBlissTest.ManagerTest do
     status_check_interval = Map.get(context, :status_check_interval, @clean)
     cleanup_interval = Map.get(context, :cleanup_interval, @check)
     max_age = Map.get(context, :max_age, 120)
+    send_timeout = Map.get(context, :send_timeout, @send_timeout)
 
     {:ok, pid} = Manager.start_link(poll_interval: poll_interval, 
                                     status_check_interval: status_check_interval,
                                     cleanup_interval: cleanup_interval,
-                                    max_age: max_age)
+                                    max_age: max_age,
+                                    send_timeout: send_timeout)
 
     on_exit fn -> Process.sleep(200) end
 
@@ -290,11 +318,6 @@ defmodule ExSmsBlissTest.ManagerTest do
 
   defp sleep(context) do
     # on_exit fn -> Process.sleep(200) end
-    context
-  end
-
-  defp push(context) do
-    Application.put_env(:ex_smsbliss, :push, true)
     context
   end
 
