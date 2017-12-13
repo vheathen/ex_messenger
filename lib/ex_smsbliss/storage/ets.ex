@@ -4,6 +4,7 @@ defmodule ExSmsBliss.Storage.Ets do
 
   import Ex2ms
   
+  alias ExSmsBliss.Config
   alias ExSmsBliss.Manager
 
   # id, 
@@ -35,7 +36,8 @@ defmodule ExSmsBliss.Storage.Ets do
     # :sent - when a message is sent to the service
     # :failured - when sending is failed (service is unreachable and so on)
     # :finished - after a message came to the last life period from the service point of view
-    @states [:queued, :sending, :rejected, :sent, :failured, :finished]
+  @states [:queued, :sending, :rejected, :sent, :failed, :finished, :error]
+  @finished [:rejected, :failed, :finished, :error]
 
   def storage_init(pref) do
     :ets.new(pref, [:named_table, :set, :public,
@@ -115,21 +117,24 @@ defmodule ExSmsBliss.Storage.Ets do
   def update_message(id, changes, pref) do
 
     new_state = Map.get(changes, :state)
-
-
-    updates = changes
-              |> Map.put(:updated_at, now())
-              |> build_updates()
-
-    true = :ets.update_element(pref, id, updates)
-    update_state(id, new_state, pref)
-
-    notice = changes |> Map.delete(:state)
-
     [rec] = :ets.lookup(pref, id)
-    Manager.notify(id, get_subscriber(rec), new_state, notice)
-  end
+    notice = changes |> Map.delete(:state)
+    
+    if Config.get(:push) && (new_state in @finished) do
+      state = get_state(id, pref)
+      :ets.delete(tbl(pref, state), id)
+      :ets.delete(pref, id)
+    else
+      updates = changes
+                |> Map.put(:updated_at, now())
+                |> build_updates()
+
+      true = :ets.update_element(pref, id, updates)
+      update_state(id, new_state, pref)
+    end
   
+    Manager.notify(id, get_subscriber(rec), new_state, notice)
+  end  
 
   def cleanup(0, pref) do
     :ets.delete_all_objects(pref)
@@ -137,6 +142,10 @@ defmodule ExSmsBliss.Storage.Ets do
       :ets.delete_all_objects(tbl(pref, state))
     end
   end
+
+  # def clean_finished(max_age, pref) do
+    
+  # end
 
   # create a structure for :ets.update_element/3
   defp build_updates(changes) do
@@ -152,22 +161,11 @@ defmodule ExSmsBliss.Storage.Ets do
   defp add_element_to_update(_,                    changes), do: changes
 
   defp get_message(id, state, pref) do
-
-    with \
-      [rec] <- :ets.lookup(pref, id),
-      rec   <- inject_state(rec, state),
-      msg   <- build_message(rec)
-    do
-      msg
-    else
-      err -> raise "Got error on lookup with id #{id}: #{err}"
-    end
-
-    # pref
-    # |> :ets.lookup(id)
-    # |> Enum.at(0)
-    # |> inject_state(state)
-    # |> build_message()
+    pref
+    |> :ets.lookup(id)
+    |> Enum.at(0)
+    |> inject_state(state)
+    |> build_message()
   end
   
   defp build_record(message, pref) do

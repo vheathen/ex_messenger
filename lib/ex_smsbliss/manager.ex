@@ -33,7 +33,7 @@ defmodule ExSmsBliss.Manager do
 
     :ok
   end
-  def notify(_id, _subscriber, _state, _changes), do: :ok
+  # def notify(_id, _subscriber, _state, _changes), do: :ok
 
   ####################
   # GenServer staff
@@ -49,12 +49,21 @@ defmodule ExSmsBliss.Manager do
   def init(opts \\ []) do
     
     state = %{poll_interval: 
-                Keyword.get(opts, :poll_interval) || Config.get(:poll_interval)}
+                Keyword.get(opts, :poll_interval) || Config.get(:poll_interval),
+              status_check_interval:
+                Keyword.get(opts, :status_check_interval) || Config.get(:status_check_interval),
+              # cleanup_interval:
+              #   Keyword.get(opts, :cleanup_interval) || Config.get(:cleanup_interval),
+              # max_age:
+              #   Keyword.get(opts, :max_age) || Config.get(:max_age)
+              }
 
     {:ok, _} = Ets.storage_init(__MODULE__)
 
     schedule_sending(state)
-
+    schedule_status_check(state)
+    # schedule_clean(state)
+    
     {:ok, state}
   end
 
@@ -68,19 +77,77 @@ defmodule ExSmsBliss.Manager do
     {:noreply, state}
   end
 
+  def handle_info(:status_check, state) do
+    spawn fn ->
+      status_check()
+
+      schedule_status_check(state)
+    end
+
+    {:noreply, state}
+  end
+
+  # def handle_info(:clean, state) do
+  #   spawn fn ->
+  #     clean_expired(state)
+      
+  #     schedule_clean(state)
+  #   end
+
+  #   {:noreply, state}
+  # end
+
   ##
   # Private part
   ##
 
+  # defp clean_expired(%{max_age: max_age}) do
+  #   Ets.clean_finished(max_age, __MODULE__)
+  # end
+
+  defp status_check() do
+    :sent
+    |> Ets.get_by_state(__MODULE__)
+    |> prepare_status_request()
+    |> request_status()
+  end
+
+  # It returns a list with lists 200 messages each
+  defp prepare_status_request(queue) when is_list(queue) do
+    queue
+    |>  Enum.map(fn msg -> 
+          %{client_id: msg.client_id, smsc_id: msg.smsc_id}
+        end)
+    |>  Enum.chunk_every(200)
+  end
+
+  defp request_status(bundles) do
+    bundles
+    |>  Enum.each(fn bundle -> 
+          spawn fn ->
+      
+            with \
+              {:ok, response} <- sms().status(bundle)
+            do
+              parse_response(response)
+            else
+              error ->
+                raise ArgumentError, error
+            end
+                  
+          end
+        end)
+  end
+
   defp send() do
     __MODULE__
     |> Ets.prepare_send_queue()
-    |> prepare_bundles()
+    |> prepare_send_bundles()
     |> send_bundles()    
   end
 
   # TODO: Move to sms adapter ?
-  defp prepare_bundles(queue) when is_list(queue) do
+  defp prepare_send_bundles(queue) when is_list(queue) do
     queue
     |>  Enum.reduce(%{}, fn msg, bundles -> 
           schedule_at = Map.get(msg, :schedule_at) || :none
@@ -110,28 +177,61 @@ defmodule ExSmsBliss.Manager do
       do
         parse_response(response)
       else
-        error ->
-          raise ArgumentError, error
+        {:error, description} ->
+          react_on_error(bundle, description)
       end
       
     end
   end
 
   defp parse_response(%{"messages" => messages} = _response) do
-    # IO.inspect "Msgs: #{inspect messages}"
-    Enum.each(messages, &(update_message(&1)))        
+    Enum.each(messages, &(update_message(&1)))
+  end
+
+  defp react_on_error(bundle, description) do
+    bundle
+    |>  Enum.each(fn msg -> 
+          msg
+          |> Map.put(:status, description)
+          |> update_message(:error)
+        end)
   end
 
   defp prepare_send_opts(:none), do: []
   defp prepare_send_opts(schedule_at), do: [schedule_at: schedule_at]
 
+  # queued	                     Сообщение находится в очереди
+  # delivered          fin          Сообщение доставлено
+  # delivery error     fail          Ошибка доставки SMS (абонент в течение времени доставки находился вне зоны действия сети или номер абонента заблокирован)
+  # smsc submit                  Сообщение доставлено в SMSC
+  # smsc reject        fail          Сообщение отвергнуто SMSC (номер заблокирован или не существует)
+  # incorrect id       fail          Неверный идентификатор сообщения
+
+
   # TODO: Move to sms adapter ?
-  defp update_message(%{} = message) do
+  defp get_state(%{"smscId" => _, "status" => "delivered"})
+  do
+    :finished
+  end
+  defp get_state(%{"smscId" => _, "status" => status}) 
+    when status in ["delivery error", "smsc reject", "incorrect id"]
+  do
+    :failed
+  end
+  defp get_state(%{"smscId" => _, "status" => status})
+    when status in ["accepted", "smsc submit", "queued"]
+  do
+    :sent
+  end
+  defp get_state(_), do: :rejected
+
+  # TODO: Move to sms adapter ?
+  defp update_message(%{} = message, state \\ nil) do
     changes = %{}
-              |> Map.put(:client_id, message["clientId"])
-              |> Map.put(:smsc_id, message["smscId"])
-              |> Map.put(:status, message["status"])
-              |> Map.put(:state, :sent)
+              |> Map.put(:client_id, message["clientId"] || message[:client_id])
+              |> Map.put(:status, message["status"] || message[:status])
+              |> Map.put(:smsc_id, message["smscId"] || message[:smsc_id])
+              |> Map.put(:state, state || get_state(message))
 
     Ets.update_message(changes.client_id, changes, __MODULE__)
   end
@@ -140,7 +240,16 @@ defmodule ExSmsBliss.Manager do
     Process.send_after(__MODULE__, :send, poll_interval)
   end
 
+  defp schedule_status_check(%{status_check_interval: status_check_interval}) do
+    Process.send_after(__MODULE__, :status_check, status_check_interval)
+  end
+
+  # defp schedule_clean(%{cleanup_interval: cleanup_interval}) do
+  #   Process.send_after(__MODULE__, :clean, cleanup_interval)
+  # end
+
   defp sms() do
     Config.get(:sms_adapter)
   end
+
 end
