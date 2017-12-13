@@ -22,7 +22,7 @@ defmodule ExSmsBliss.ConfigTest do
     assert 120_000 == Config.get(:send_timeout)
     assert 300_000 == Config.get(:max_age)
 
-    assert false == Config.get(:push)
+    assert true == Config.get(:push)
 
     assert ExSmsBliss.Json == Config.get(:sms_adapter)
   end

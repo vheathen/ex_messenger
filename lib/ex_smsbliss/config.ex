@@ -15,7 +15,7 @@ defmodule ExSmsBliss.Config do
         send_timeout: 120_000, # timeout before failing 
         max_age: 300_000, # max time to keep sms
 
-        push: false,    # do not reply to the sender by default (wait for a result request)
+        push: true,    # do not reply to the sender by default (wait for a result request)
         auth: []
     }
 

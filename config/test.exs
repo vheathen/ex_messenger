@@ -10,7 +10,7 @@ config :ex_smsbliss, sms_adapter: ExSmsBliss.Json,
   send_timeout: 120_000, # timeout before failing 
   max_age: 300_000, # max time to keep sms
   
-  push: false,    # do not reply to the sender by default (wait for a result request)
+  push: true,    # push status updates to the sender by default
   auth: []
 
   config :ex_smsbliss, ExSmsBliss.Json, 
