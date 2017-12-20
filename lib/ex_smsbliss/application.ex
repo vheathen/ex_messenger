@@ -25,6 +25,7 @@ defmodule ExSmsBliss.Application do
           [
             # Starts a worker by calling: ExSmsBliss.Worker.start_link(arg)
             # {ExSmsBliss.Worker, arg},
+            {ExSmsBliss.Manager, []}
           ]
 
       # See https://hexdocs.pm/elixir/Supervisor.html
