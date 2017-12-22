@@ -9,6 +9,7 @@ defmodule ExSmsBliss.Mixfile do
       elixirc_paths: elixirc_paths(Mix.env),
       start_permanent: Mix.env == :prod,
       deps: deps(),
+      aliases: aliases(),
 
       name: "ExSmsBliss",
       source_url: "https://github.com/vheathen/ex_smsbliss",
@@ -20,7 +21,6 @@ defmodule ExSmsBliss.Mixfile do
              licenses: ["MIT"],
              links: %{ "GitHub" => "https://github.com/vheathen/ex_smsbliss" },
            ]
-
     ]
   end
 
@@ -58,4 +58,9 @@ defmodule ExSmsBliss.Mixfile do
     ]
   end
 
+  defp aliases do
+    [
+      test: "test --no-start"
+    ]
+  end
 end

@@ -47,7 +47,8 @@ defmodule ExSmsBliss.Manager do
 
   @doc false
   def init(opts \\ []) do
-    
+    Process.flag(:trap_exit, true)
+
     state = %{poll_interval: 
                 Keyword.get(opts, :poll_interval) || Config.get(:poll_interval),
               status_check_interval:
@@ -70,7 +71,7 @@ defmodule ExSmsBliss.Manager do
   end
 
   def handle_info(:poll, state) do
-    spawn fn ->
+    spawn_link fn ->
       send()
       expire(state)
       
@@ -81,7 +82,7 @@ defmodule ExSmsBliss.Manager do
   end
 
   def handle_info(:status_check, state) do
-    spawn fn ->
+    spawn_link fn ->
       status_check()
 
       schedule_status_check(state)
@@ -90,8 +91,12 @@ defmodule ExSmsBliss.Manager do
     {:noreply, state}
   end
 
+  def handle_info({:EXIT, _from, _reason}, state) do
+    {:noreply, state}
+  end
+
   # def handle_info(:clean, state) do
-  #   spawn fn ->
+  #   spawn_link fn ->
   #     clean_expired(state)
       
   #     schedule_clean(state)
@@ -131,7 +136,7 @@ defmodule ExSmsBliss.Manager do
   defp request_status(bundles) do
     bundles
     |>  Enum.each(fn bundle -> 
-          spawn fn ->
+          spawn_link fn ->
       
             with \
               {:ok, response} <- sms().status(bundle)
@@ -176,8 +181,8 @@ defmodule ExSmsBliss.Manager do
   end
 
   defp send_bundle(schedule_at, bundle) do
-    spawn fn -> 
-      
+    spawn_link fn -> 
+
       with \
         {:ok, response} <- sms().send(bundle, prepare_send_opts(schedule_at))
       do
