@@ -34,7 +34,7 @@ defmodule ExSmsBliss.Storage.Ets do
     # :sending - When it is going to be sent
     # :rejected - If service rejected a message
     # :sent - when a message is sent to the service
-    # :failured - when sending is failed (service is unreachable and so on)
+    # :failed - when sending is failed (service is unreachable and so on)
     # :finished - after a message came to the last life period from the service point of view
   @states [:queued, :sending, :rejected, :sent, :failed, :finished, :error, :expired]
   @finished [:rejected, :failed, :finished, :error, :expired]

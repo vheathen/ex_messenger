@@ -246,7 +246,7 @@ defmodule ExSmsBlissTest.ManagerTest do
 
     @tag amount: 10, send_timeout: 200
     test "it must not send :expired notification if messages delivered", %{qids: ids, send_timeout: timeout} do
-      Process.sleep(round(timeout * 1.1))
+      Process.sleep(round(timeout * 1.15))
       for id <- ids do
         refute_received {:ex_smsbliss, ^id, :expired, _}
         assert_received {:ex_smsbliss, ^id, :sending, _}
