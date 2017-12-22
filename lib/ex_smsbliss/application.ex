@@ -22,11 +22,15 @@ defmodule ExSmsBliss.Application do
 
       # List all child processes to be supervised
       children =
+        if Mix.env != :test do
           [
             # Starts a worker by calling: ExSmsBliss.Worker.start_link(arg)
             # {ExSmsBliss.Worker, arg},
             {ExSmsBliss.Manager, []}
           ]
+        else 
+          []
+        end
 
       # See https://hexdocs.pm/elixir/Supervisor.html
       # for other strategies and supported options
