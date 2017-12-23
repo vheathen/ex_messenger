@@ -239,6 +239,17 @@ defmodule ExSmsBlissTest.ManagerTest do
       assert 0 == Manager.count_queue()
     end
 
+    @tag amount: 10, sms_adapter: FakeSmsGlobalError
+    test "must deal with service errors", %{qids: ids} do
+      for id <- ids do
+        assert_receive {:ex_smsbliss, ^id, :sending, _}, round(@poll * 1.2)
+        assert_receive {:ex_smsbliss, ^id, :error, _}, @poll * 2
+      end
+
+      assert 0 == Manager.count_queue()
+    end
+    
+
   end
 
   describe "expire messages after send_timeout:" do

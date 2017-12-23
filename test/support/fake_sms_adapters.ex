@@ -149,6 +149,15 @@ defmodule FakeSmsError do
   end
 end
 
+defmodule FakeSmsGlobalError do
+  def send(_, _ \\ []) do
+    {:ok, ~S({"status": "error", "description": "error authorization"})}
+  end
+  def status(_, _opts \\ []) do
+    {:ok, ~S({"status": "error", "description": "error authorization"})}
+  end
+end
+
 defmodule FakeSmsStatusQueued do
   def reply_send(msgs) do
     msgs

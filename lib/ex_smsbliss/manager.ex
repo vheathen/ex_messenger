@@ -141,10 +141,10 @@ defmodule ExSmsBliss.Manager do
             with \
               {:ok, response} <- sms().status(bundle)
             do
-              parse_response(response)
+              parse_response(response, bundle)
             else
-              error ->
-                raise ArgumentError, error
+              {:error, description} ->
+                react_on_error(bundle, description)
             end
                   
           end
@@ -186,7 +186,7 @@ defmodule ExSmsBliss.Manager do
       with \
         {:ok, response} <- sms().send(bundle, prepare_send_opts(schedule_at))
       do
-        parse_response(response)
+        parse_response(response, bundle)
       else
         {:error, description} ->
           react_on_error(bundle, description)
@@ -195,8 +195,13 @@ defmodule ExSmsBliss.Manager do
     end
   end
 
-  defp parse_response(%{"messages" => messages} = _response) do
+  defp parse_response(%{"messages" => messages} = _response, _) do
     Enum.each(messages, &(update_message(&1)))
+  end
+
+  defp parse_response(error, bundle) when is_binary(error) do
+    %{"status" => "error", "description" => descr} = Poison.decode!(error)
+    react_on_error(bundle, descr)
   end
 
   defp react_on_error(bundle, description) do
