@@ -257,7 +257,8 @@ defmodule ExSmsBliss.Manager do
   end
 
   defp schedule_status_check(%{status_check_interval: status_check_interval}) do
-    Process.send_after(__MODULE__, :status_check, status_check_interval)
+    if status_check_interval > 0, do:
+      Process.send_after(__MODULE__, :status_check, status_check_interval)
   end
 
   # defp schedule_clean(%{cleanup_interval: cleanup_interval}) do
