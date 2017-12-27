@@ -159,9 +159,12 @@ defmodule FakeSmsGlobalError do
 end
 
 defmodule FakeSmsStatusQueued do
+  use GenServer
+
   def reply_send(msgs) do
     msgs
     |>  Enum.map(fn msg -> 
+          GenServer.cast(__MODULE__, {:send, Map.get(msg, :client_id)})
           %{
             "status" => "accepted",
             "clientId" => Map.get(msg, :client_id),
@@ -172,6 +175,7 @@ defmodule FakeSmsStatusQueued do
   def reply_status(msgs) do
     msgs
     |>  Enum.map(fn msg -> 
+          GenServer.cast(__MODULE__, {:status, Map.get(msg, :client_id)})
           %{
             "status" => "queued",
             "clientId" => Map.get(msg, :client_id),
@@ -186,4 +190,26 @@ defmodule FakeSmsStatusQueued do
   def status(msgs, _opts \\ []) do
     {:ok, %{"messages" => reply_status(msgs)}}
   end
+
+  # GenServer server part
+  def start_link(pid) when is_pid(pid) do
+    GenServer.start_link(__MODULE__, pid, name: __MODULE__)
+  end
+
+  def init(pid) when is_pid(pid) do
+    {:ok, pid}
+  end
+
+  def handle_cast({:send, id}, pid) do
+    Process.send(pid, {:send, id}, [])
+
+    {:noreply, pid}
+  end
+
+  def handle_cast({:status, id}, pid) do
+    Process.send(pid, {:status, id}, [])
+
+    {:noreply, pid}
+  end
+
 end

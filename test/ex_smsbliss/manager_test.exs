@@ -180,14 +180,17 @@ defmodule ExSmsBlissTest.ManagerTest do
 
     @tag amount: 1, sms_adapter: FakeSmsStatusQueued
     test "finished: it must continue to request statuses if messages are not delivered yet", %{qids: ids} do
+      {:ok, _pid} = FakeSmsStatusQueued.start_link(self())
       Process.sleep(@check * 4)
       
       for id <- ids do
         assert_received {:ex_smsbliss, ^id, :sending, _}
+        assert_received {:send, ^id}
         assert_received {:ex_smsbliss, ^id, :sent, %{smsc_id: _, status: "accepted"}}
+        assert_receive {:status, ^id}
         assert_received {:ex_smsbliss, ^id, :sent, %{smsc_id: _, status: "queued"}}
-        assert_received {:ex_smsbliss, ^id, :sent, %{smsc_id: _, status: "queued"}}
-        assert_received {:ex_smsbliss, ^id, :sent, %{smsc_id: _, status: "queued"}}
+        assert_receive {:status, ^id}
+        assert_receive {:status, ^id}
         refute_received {:ex_smsbliss, ^id, :finished, %{smsc_id: _, status: "delivered"}}
         refute_received {:ex_smsbliss, ^id, :failed, %{smsc_id: _, status: _}}
       end
@@ -203,14 +206,17 @@ defmodule ExSmsBlissTest.ManagerTest do
 
     @tag amount: 1, sms_adapter: FakeSmsStatusQueued
     test "failed: it must continue to request statuses if messages are not delivered yet", %{qids: ids} do
+      {:ok, _pid} = FakeSmsStatusQueued.start_link(self())
       Process.sleep(@check * 4)
       
       for id <- ids do
         assert_received {:ex_smsbliss, ^id, :sending, _}
+        assert_received {:send, ^id}
         assert_received {:ex_smsbliss, ^id, :sent, %{smsc_id: _, status: "accepted"}}
+        assert_receive {:status, ^id}
         assert_received {:ex_smsbliss, ^id, :sent, %{smsc_id: _, status: "queued"}}
-        assert_received {:ex_smsbliss, ^id, :sent, %{smsc_id: _, status: "queued"}}
-        assert_received {:ex_smsbliss, ^id, :sent, %{smsc_id: _, status: "queued"}}
+        assert_receive {:status, ^id}
+        assert_receive {:status, ^id}
         refute_received {:ex_smsbliss, ^id, :finished, %{smsc_id: _, status: "delivered"}}
         refute_received {:ex_smsbliss, ^id, :failed, %{smsc_id: _, status: _}}
       end
@@ -268,6 +274,8 @@ defmodule ExSmsBlissTest.ManagerTest do
 
     @tag amount: 10, sms_adapter: FakeSmsStatusQueued, send_timeout: 200
     test "it must send :expired notification and clean messages if they aren't delivered", %{qids: ids, send_timeout: timeout} do
+      {:ok, _pid} = FakeSmsStatusQueued.start_link(self())
+
       Process.sleep(round(timeout * 1.5))
       for id <- ids do
         assert_received {:ex_smsbliss, ^id, :sending, _}

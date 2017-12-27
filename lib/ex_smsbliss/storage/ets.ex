@@ -114,17 +114,23 @@ defmodule ExSmsBliss.Storage.Ets do
     :ets.foldl(f, [], tbl(pref, :queued))
   end
   
-  def update_message(id, changes, pref) do
-
+  def update_message(id, changes, pref) when is_binary(id) do
     # Get record first and check it existence
-    rec = pref |> :ets.lookup(id) |> Enum.at(0)
+    pref 
+    |> :ets.lookup(id) 
+    |> Enum.at(0)
+    |> update_message(changes, pref)
+  end 
+  def update_message({id, status, _, _, _, _, smsc_id, _, _, subscriber}, 
+                     %{status: n_status, smsc_id: n_smsc_id, state: new_state} = changes, 
+                     pref) 
+  do
+    state = get_state(id, pref)
 
-    if rec do
-      new_state = Map.get(changes, :state)
+    unless status == n_status && smsc_id == n_smsc_id && state == new_state do
       notice = changes |> Map.delete(:state)
       
       if Config.get(:push) && (new_state in @finished) do
-        state = get_state(id, pref)
         :ets.delete(tbl(pref, state), id)
         :ets.delete(pref, id)
       else
@@ -136,9 +142,11 @@ defmodule ExSmsBliss.Storage.Ets do
         update_state(id, new_state, pref)
       end
     
-      Manager.notify(id, get_subscriber(rec), new_state, notice)
+      Manager.notify(id, subscriber, new_state, notice)  
     end
-  end  
+  end
+  def  update_message(_, _, _), do: :ok
+
 
   def cleanup(0, pref) do
     :ets.delete_all_objects(pref)
@@ -274,6 +282,12 @@ defmodule ExSmsBliss.Storage.Ets do
 
   defp get_id({id, _, _, _, _, _, _, _, _, _}), do: id
   defp get_id({id, _, _, _, _, _, _, _, _, _, _}), do: id
+
+  defp get_status({_, status, _, _, _, _, _, _, _, _}), do: status
+  defp get_status({_, _, status, _, _, _, _, _, _, _, _}), do: status
+
+  defp get_smsc_id({_, _, _, _, _, _, smsc_id, _, _, _}), do: smsc_id
+  defp get_smsc_id({_, _, _, _, _, _, _, smsc_id, _, _, _}), do: smsc_id
 
   defp get_subscriber({_, _, _, _, _, _, _, _, _, subscriber}), do: subscriber
   defp get_subscriber({_, _, _, _, _, _, _, _, _, _, subscriber}), do: subscriber
