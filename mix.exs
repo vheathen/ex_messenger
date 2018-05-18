@@ -39,21 +39,17 @@ defmodule ExSmsBliss.Mixfile do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      # {:dep_from_hexpm, "~> 0.3.0"},
-      # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"},
 
       {:tesla, "~> 0.10.0"}, # , github: "teamon/tesla"},
       {:poison, ">= 1.0.0"},
 
       {:uuid, "~> 1.1"},
 
-      {:gen_stage, "~> 0.12"},
-
       {:ex2ms, "~> 1.0"},
 
       {:faker, "~> 0.9", only: [:test, :dev]},
       {:credo, "~> 0.8", only: [:dev, :test], runtime: false},
-      {:mix_test_watch, path: "/home/vlad/ProjectsLocal/mix-test.watch", only: :dev, runtime: false}, #"~> 0.5", only: :dev, runtime: false},
+      {:mix_test_watch, "~> 0.6", only: :dev, runtime: false},
     ]
   end
 
