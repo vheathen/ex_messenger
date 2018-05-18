@@ -16,8 +16,9 @@ config :ex_smsbliss, sms_adapter: ExSmsBliss.Json,
   config :ex_smsbliss, ExSmsBliss.Json, 
     api_base: "http://api.smsbliss.net/messages/v2/",
     request_billing_on_send: true # should it request billing details on each send message\messages?
-  
 
+# Do not start Manager on tests
+config :ex_messenger, :children, []
 
 # We need to test requests without real external service usage
 config :tesla, adapter: :mock

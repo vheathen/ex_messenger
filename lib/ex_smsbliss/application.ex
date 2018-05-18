@@ -21,12 +21,18 @@ defmodule ExSmsBliss.Application do
     do
 
       # List all child processes to be supervised
-      children =
-          [
-            # Starts a worker by calling: ExSmsBliss.Worker.start_link(arg)
-            # {ExSmsBliss.Worker, arg},
-            {ExSmsBliss.Manager, []}
-          ]
+      children = 
+        case Application.get_env(:ex_messenger, :children) do
+          nil ->
+            [
+              # Starts a worker by calling: ExSmsBliss.Worker.start_link(arg)
+              # {ExSmsBliss.Worker, arg},
+              {ExSmsBliss.Manager, []}
+            ]
+
+          # Do not start children for the tests while developing the library
+          children -> children
+        end
 
       # See https://hexdocs.pm/elixir/Supervisor.html
       # for other strategies and supported options
