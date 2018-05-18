@@ -5,7 +5,6 @@ defmodule ExMessenger.Application do
   require Logger
 
   def start(_type, _args) do
-    import Supervisor.Spec
 
     with \
       login <- System.get_env("EX_SMSBLISS_LOGIN"),
