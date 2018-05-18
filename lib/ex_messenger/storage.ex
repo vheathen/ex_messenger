@@ -1,4 +1,4 @@
-defmodule ExSmsBliss.Storage do
+defmodule ExMessenger.Storage do
   @moduledoc false
 
   @type opts :: term

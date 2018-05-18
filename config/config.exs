@@ -10,11 +10,11 @@ use Mix.Config
 
 # You can configure your application as:
 #
-#     config :ex_smsbliss, key: :value
+#     config :ex_messenger, key: :value
 #
 # and access this configuration in your application as:
 #
-#     Application.get_env(:ex_smsbliss, :key)
+#     Application.get_env(:ex_messenger, :key)
 #
 # You can also configure a 3rd-party app:
 #

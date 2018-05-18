@@ -1,10 +1,10 @@
-defmodule ExSmsBliss.Json do
+defmodule ExMessenger.Json do
   @moduledoc """
   JSON Api for SmsBliss service
   """
   use Tesla, only: [:post]
 
-  alias ExSmsBliss.Config
+  alias ExMessenger.Config
 
   @message_fields ~w(text phone sender client_id)a
 
@@ -22,7 +22,7 @@ defmodule ExSmsBliss.Json do
   @client_id_format ~r/\A[\w\d\-]{1,72}\Z/m
 
   plug Tesla.Middleware.BaseUrl, "https://api.smsbliss.net/messages/v2/" # will get from Config
-  plug ExSmsBliss.Middleware.Json.Auth
+  plug ExMessenger.Middleware.Json.Auth
 
   # this have to be last plug as we work with unencoded body (%{} = body)
   plug Tesla.Middleware.JSON

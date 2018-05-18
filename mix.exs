@@ -1,9 +1,9 @@
-defmodule ExSmsBliss.Mixfile do
+defmodule ExMessenger.Mixfile do
   use Mix.Project
 
   def project do
     [
-      app: :ex_smsbliss,
+      app: :ex_messenger,
       version: "0.1.0",
       elixir: "~> 1.5",
       elixirc_paths: elixirc_paths(Mix.env),
@@ -11,15 +11,15 @@ defmodule ExSmsBliss.Mixfile do
       deps: deps(),
       aliases: aliases(),
 
-      name: "ExSmsBliss",
-      source_url: "https://github.com/vheathen/ex_smsbliss",
+      name: "ExMessenger",
+      source_url: "https://github.com/vheathen/ex_messenger",
       description: "SmsBliss (https://smsbliss.ru/) unofficial API client",
       package: [
-             name: :ex_smsbliss,
+             name: :ex_messenger,
              files: ["lib", "mix.exs", "README*", "LICENSE*"],
              maintainers: ["Vladimir Drobyshevskiy"],
              licenses: ["MIT"],
-             links: %{ "GitHub" => "https://github.com/vheathen/ex_smsbliss" },
+             links: %{ "GitHub" => "https://github.com/vheathen/ex_messenger" },
            ]
     ]
   end
@@ -28,7 +28,7 @@ defmodule ExSmsBliss.Mixfile do
   def application do
     [
       extra_applications: [:logger],
-      mod: {ExSmsBliss.Application, []}
+      mod: {ExMessenger.Application, []}
     ]
   end
 

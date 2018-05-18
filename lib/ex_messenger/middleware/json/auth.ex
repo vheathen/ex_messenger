@@ -1,9 +1,9 @@
-defmodule ExSmsBliss.Middleware.Json.Auth do
+defmodule ExMessenger.Middleware.Json.Auth do
   @moduledoc false
 
   @behaviour Tesla.Middleware
 
-  alias ExSmsBliss.Config
+  alias ExMessenger.Config
   
   def call(env, next, opts) do
     opts = opts || []

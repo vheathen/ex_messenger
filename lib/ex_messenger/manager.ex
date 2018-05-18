@@ -1,11 +1,11 @@
-defmodule ExSmsBliss.Manager do
+defmodule ExMessenger.Manager do
   @moduledoc false
   use GenServer
 
   require Logger
   
-  alias ExSmsBliss.Config
-  alias ExSmsBliss.Storage.Ets
+  alias ExMessenger.Config
+  alias ExMessenger.Storage.Ets
 
   @doc """
   Returns queue: a message list # TODO: with a given status and higher
@@ -28,7 +28,7 @@ defmodule ExSmsBliss.Manager do
 
   def notify(id, subscriber, state, changes) when is_pid(subscriber) do
     if Config.get(:push) do
-      Process.send(subscriber, {:ex_smsbliss, id, state, changes}, [])
+      Process.send(subscriber, {:ex_messenger, id, state, changes}, [])
     end
 
     :ok

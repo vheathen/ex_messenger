@@ -1,11 +1,11 @@
-defmodule ExSmsBliss.Storage.Ets do
-  @behaviour ExSmsBliss.Storage
+defmodule ExMessenger.Storage.Ets do
+  @behaviour ExMessenger.Storage
   @moduledoc false
 
   import Ex2ms
   
-  alias ExSmsBliss.Config
-  alias ExSmsBliss.Manager
+  alias ExMessenger.Config
+  alias ExMessenger.Manager
 
   # id, 
   # state - internal status: :queued, :working, :sent, :failured, :finished 

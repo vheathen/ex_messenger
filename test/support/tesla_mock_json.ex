@@ -1,4 +1,4 @@
-defmodule ExSmsBliss.TeslaMockJson do
+defmodule ExMessenger.TeslaMockJson do
 
   @send_statuses  [ #"accepted",
                     "invalid mobile phone",

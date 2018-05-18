@@ -1,12 +1,12 @@
-defmodule ExSmsBliss.JsonTest do
+defmodule ExMessenger.JsonTest do
   use ExUnit.Case, async: false
-  doctest ExSmsBliss.Json
+  doctest ExMessenger.Json
 
-  alias ExSmsBliss.Config
-  alias ExSmsBliss.Json
-  alias ExSmsBliss.TeslaMockJson
+  alias ExMessenger.Config
+  alias ExMessenger.Json
+  alias ExMessenger.TeslaMockJson
 
-  import ExSmsBliss.ApiTestHelper
+  import ExMessenger.ApiTestHelper
   
   setup do
     TeslaMockJson.prepare()
@@ -207,13 +207,13 @@ defmodule ExSmsBliss.JsonTest do
 
   describe ":request_billing_on_send" do
     setup %{req_bill?: req_bill} = context do
-      current_state = Config.get(ExSmsBliss.Json)
+      current_state = Config.get(ExMessenger.Json)
       on_exit fn ->
-        Application.put_env(:ex_smsbliss, ExSmsBliss.Json, current_state)
+        Application.put_env(:ex_messenger, ExMessenger.Json, current_state)
       end    
 
       opts = Keyword.put(current_state, :request_billing_on_send, req_bill)
-      Application.put_env(:ex_smsbliss, ExSmsBliss.Json, opts)
+      Application.put_env(:ex_messenger, ExMessenger.Json, opts)
 
 
       msgs = gen_messages(context)      

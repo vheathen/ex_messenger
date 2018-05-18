@@ -1,6 +1,6 @@
-defmodule ExSmsBliss do
+defmodule ExMessenger do
   @moduledoc """
-  Documentation for ExSmsbliss.
+  Documentation for ExMessenger.
 
   Write a message to the storage with status :queued
   Every X time units start process to push all :queued messages to the service

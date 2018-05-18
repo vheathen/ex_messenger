@@ -1,4 +1,4 @@
-defmodule ExSmsBliss.ApiTestHelper do
+defmodule ExMessenger.ApiTestHelper do
 
   @option_keys [:amount, :sender, :client_id, :schedule_at]
   

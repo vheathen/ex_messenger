@@ -1,10 +1,10 @@
-defmodule ExSmsBlissTest.ManagerTest do
+defmodule ExMessengerTest.ManagerTest do
   use ExUnit.Case, async: false
 
-  import ExSmsBliss.ApiTestHelper
-  alias ExSmsBliss.TeslaMockJson
+  import ExMessenger.ApiTestHelper
+  alias ExMessenger.TeslaMockJson
 
-  alias ExSmsBliss.Manager
+  alias ExMessenger.Manager
 
   @poll 50
   @check 100
@@ -78,14 +78,14 @@ defmodule ExSmsBlissTest.ManagerTest do
       assert 0 == Manager.count_queue(:sending)
 
       for id <- ids do
-        assert_receive {:ex_smsbliss, ^id, :sending, _}, round(@poll * 1.5)
+        assert_receive {:ex_messenger, ^id, :sending, _}, round(@poll * 1.5)
       end
       
       Enum.each(msgs, &(Manager.queue(&1)))
       
       for _ <- 1..amount do
-        assert_receive {:ex_smsbliss, _, :sending, _}, round(@poll * 1.5)
-        assert_received {:ex_smsbliss, _, :sent, _}        
+        assert_receive {:ex_messenger, _, :sending, _}, round(@poll * 1.5)
+        assert_received {:ex_messenger, _, :sent, _}        
       end
     end
 
@@ -117,15 +117,15 @@ defmodule ExSmsBlissTest.ManagerTest do
 
     @tag amount: 1, sender: "SKB1"
     test "it must push changes back if :push == true", %{qids: [id]} do      
-      refute_receive {:ex_smsbliss, _id, _new_state, _additional_changes_map}, 1
-      assert_receive {:ex_smsbliss, ^id, :sending, %{}}, 80
-      assert_receive {:ex_smsbliss, ^id, :sent, %{smsc_id: _, status: "accepted"}}, 150
+      refute_receive {:ex_messenger, _id, _new_state, _additional_changes_map}, 1
+      assert_receive {:ex_messenger, ^id, :sending, %{}}, 80
+      assert_receive {:ex_messenger, ^id, :sent, %{smsc_id: _, status: "accepted"}}, 150
     end
 
     @tag amount: 10, sms_adapter: FakeSmsRejected
     test "on rejected messages notification must have appropriate status", %{qids: ids} do
       for id <- ids do
-        assert_receive {:ex_smsbliss, ^id, :rejected, %{smsc_id: _, status: _}}, @poll * 4
+        assert_receive {:ex_messenger, ^id, :rejected, %{smsc_id: _, status: _}}, @poll * 4
       end
 
       assert 0 == Manager.count_queue()
@@ -133,8 +133,8 @@ defmodule ExSmsBlissTest.ManagerTest do
 
     test "it must remove finished messages after notification sent", %{qids: ids} do
       for id <- ids do
-        assert_receive {:ex_smsbliss, ^id, :sending, _}, @poll + 5
-        assert_receive {:ex_smsbliss, ^id, :sent, %{smsc_id: _, status: "accepted"}}, round(@check * 1.2)
+        assert_receive {:ex_messenger, ^id, :sending, _}, @poll + 5
+        assert_receive {:ex_messenger, ^id, :sent, %{smsc_id: _, status: "accepted"}}, round(@check * 1.2)
       end
 
       Process.sleep(500)
@@ -158,9 +158,9 @@ defmodule ExSmsBlissTest.ManagerTest do
     @tag amount: 20
     test "every Y timeunits it must check if there are sent messages available and request their status", %{qids: qids} do
       for id <- qids do
-        assert_receive {:ex_smsbliss, ^id, :sending, _}, round(@poll * 1.2)
-        assert_receive {:ex_smsbliss, ^id, :sent, %{smsc_id: _, status: "accepted"}}, @poll * 2
-        assert_receive {:ex_smsbliss, ^id, :finished, %{smsc_id: _, status: "delivered"}}, @check * 2
+        assert_receive {:ex_messenger, ^id, :sending, _}, round(@poll * 1.2)
+        assert_receive {:ex_messenger, ^id, :sent, %{smsc_id: _, status: "accepted"}}, @poll * 2
+        assert_receive {:ex_messenger, ^id, :finished, %{smsc_id: _, status: "delivered"}}, @check * 2
       end
 
       assert 0 == Manager.count_queue()
@@ -170,9 +170,9 @@ defmodule ExSmsBlissTest.ManagerTest do
     @tag amount: 15, sms_adapter: FakeSmsStatusFailed
     test "must deal with failed statuses", %{qids: ids} do
       for id <- ids do
-        assert_receive {:ex_smsbliss, ^id, :sending, _}, round(@poll * 1.2)
-        assert_receive {:ex_smsbliss, ^id, :sent, %{smsc_id: _, status: "accepted"}}, @poll * 2
-        assert_receive {:ex_smsbliss, ^id, :failed, %{smsc_id: _, status: "delivery error"}}, @check * 2
+        assert_receive {:ex_messenger, ^id, :sending, _}, round(@poll * 1.2)
+        assert_receive {:ex_messenger, ^id, :sent, %{smsc_id: _, status: "accepted"}}, @poll * 2
+        assert_receive {:ex_messenger, ^id, :failed, %{smsc_id: _, status: "delivery error"}}, @check * 2
       end
 
       assert 0 == Manager.count_queue()
@@ -184,21 +184,21 @@ defmodule ExSmsBlissTest.ManagerTest do
       Process.sleep(@check * 4)
       
       for id <- ids do
-        assert_received {:ex_smsbliss, ^id, :sending, _}
+        assert_received {:ex_messenger, ^id, :sending, _}
         assert_received {:send, ^id}
-        assert_received {:ex_smsbliss, ^id, :sent, %{smsc_id: _, status: "accepted"}}
+        assert_received {:ex_messenger, ^id, :sent, %{smsc_id: _, status: "accepted"}}
         assert_receive {:status, ^id}
-        assert_received {:ex_smsbliss, ^id, :sent, %{smsc_id: _, status: "queued"}}
+        assert_received {:ex_messenger, ^id, :sent, %{smsc_id: _, status: "queued"}}
         assert_receive {:status, ^id}
         assert_receive {:status, ^id}
-        refute_received {:ex_smsbliss, ^id, :finished, %{smsc_id: _, status: "delivered"}}
-        refute_received {:ex_smsbliss, ^id, :failed, %{smsc_id: _, status: _}}
+        refute_received {:ex_messenger, ^id, :finished, %{smsc_id: _, status: "delivered"}}
+        refute_received {:ex_messenger, ^id, :failed, %{smsc_id: _, status: _}}
       end
 
       fake_sms(%{sms_adapter: FakeSms})
       
       for id <- ids do
-        assert_receive {:ex_smsbliss, ^id, :finished, %{smsc_id: _, status: "delivered"}}, @check * 2
+        assert_receive {:ex_messenger, ^id, :finished, %{smsc_id: _, status: "delivered"}}, @check * 2
       end
 
       assert 0 == Manager.count_queue()
@@ -210,21 +210,21 @@ defmodule ExSmsBlissTest.ManagerTest do
       Process.sleep(@check * 4)
       
       for id <- ids do
-        assert_received {:ex_smsbliss, ^id, :sending, _}
+        assert_received {:ex_messenger, ^id, :sending, _}
         assert_received {:send, ^id}
-        assert_received {:ex_smsbliss, ^id, :sent, %{smsc_id: _, status: "accepted"}}
+        assert_received {:ex_messenger, ^id, :sent, %{smsc_id: _, status: "accepted"}}
         assert_receive {:status, ^id}
-        assert_received {:ex_smsbliss, ^id, :sent, %{smsc_id: _, status: "queued"}}
+        assert_received {:ex_messenger, ^id, :sent, %{smsc_id: _, status: "queued"}}
         assert_receive {:status, ^id}
         assert_receive {:status, ^id}
-        refute_received {:ex_smsbliss, ^id, :finished, %{smsc_id: _, status: "delivered"}}
-        refute_received {:ex_smsbliss, ^id, :failed, %{smsc_id: _, status: _}}
+        refute_received {:ex_messenger, ^id, :finished, %{smsc_id: _, status: "delivered"}}
+        refute_received {:ex_messenger, ^id, :failed, %{smsc_id: _, status: _}}
       end
 
       fake_sms(%{sms_adapter: FakeSmsStatusFailed})
       
       for id <- ids do
-        assert_receive {:ex_smsbliss, ^id, :failed, %{smsc_id: _, status: _}}, @check * 2
+        assert_receive {:ex_messenger, ^id, :failed, %{smsc_id: _, status: _}}, @check * 2
       end
 
       assert 0 == Manager.count_queue()
@@ -238,8 +238,8 @@ defmodule ExSmsBlissTest.ManagerTest do
     @tag amount: 10, sms_adapter: FakeSmsError
     test "must deal with send error", %{qids: ids} do
       for id <- ids do
-        assert_receive {:ex_smsbliss, ^id, :sending, _}, round(@poll * 1.2)
-        assert_receive {:ex_smsbliss, ^id, :error, _}, @poll * 2
+        assert_receive {:ex_messenger, ^id, :sending, _}, round(@poll * 1.2)
+        assert_receive {:ex_messenger, ^id, :error, _}, @poll * 2
       end
 
       assert 0 == Manager.count_queue()
@@ -248,8 +248,8 @@ defmodule ExSmsBlissTest.ManagerTest do
     @tag amount: 10, sms_adapter: FakeSmsGlobalError
     test "must deal with service errors", %{qids: ids} do
       for id <- ids do
-        assert_receive {:ex_smsbliss, ^id, :sending, _}, round(@poll * 1.2)
-        assert_receive {:ex_smsbliss, ^id, :error, _}, @poll * 2
+        assert_receive {:ex_messenger, ^id, :sending, _}, round(@poll * 1.2)
+        assert_receive {:ex_messenger, ^id, :error, _}, @poll * 2
       end
 
       assert 0 == Manager.count_queue()
@@ -265,10 +265,10 @@ defmodule ExSmsBlissTest.ManagerTest do
     test "it must not send :expired notification if messages delivered", %{qids: ids, send_timeout: timeout} do
       Process.sleep(round(timeout * 1.15))
       for id <- ids do
-        refute_received {:ex_smsbliss, ^id, :expired, _}
-        assert_received {:ex_smsbliss, ^id, :sending, _}
-        assert_received {:ex_smsbliss, ^id, :sent, _}
-        assert_received {:ex_smsbliss, ^id, :finished, _}
+        refute_received {:ex_messenger, ^id, :expired, _}
+        assert_received {:ex_messenger, ^id, :sending, _}
+        assert_received {:ex_messenger, ^id, :sent, _}
+        assert_received {:ex_messenger, ^id, :finished, _}
       end
     end
 
@@ -278,10 +278,10 @@ defmodule ExSmsBlissTest.ManagerTest do
 
       Process.sleep(round(timeout * 1.5))
       for id <- ids do
-        assert_received {:ex_smsbliss, ^id, :sending, _}
-        assert_received {:ex_smsbliss, ^id, :sent, _}
-        assert_received {:ex_smsbliss, ^id, :expired, _}
-        refute_received {:ex_smsbliss, ^id, :finished, _}
+        assert_received {:ex_messenger, ^id, :sending, _}
+        assert_received {:ex_messenger, ^id, :sent, _}
+        assert_received {:ex_messenger, ^id, :expired, _}
+        refute_received {:ex_messenger, ^id, :finished, _}
       end
 
       assert 0 == Manager.count_queue()
@@ -300,13 +300,13 @@ defmodule ExSmsBlissTest.ManagerTest do
 
     # @tag amount: 50000, send_timeout: 120_000
     # test "try to send many messages", %{amount: amount} do
-    #   refute_received {:ex_smsbliss, _, :sending, _}
+    #   refute_received {:ex_messenger, _, :sending, _}
     #   assert Manager.count_queue() == amount
 
-    #   assert_receive {:ex_smsbliss, _, :sending, _}, 10000
+    #   assert_receive {:ex_messenger, _, :sending, _}, 10000
     #   assert Manager.count_queue() == amount
 
-    #   refute_receive {:ex_smsbliss, _, :sent, _}, 20000
+    #   refute_receive {:ex_messenger, _, :sent, _}, 20000
 
     #   assert Manager.count_queue() == amount
     # end
@@ -349,16 +349,16 @@ defmodule ExSmsBlissTest.ManagerTest do
 
   defp fake_sms(context) do
     sms_adapter = Map.get(context, :sms_adapter) || FakeSms
-    Application.put_env(:ex_smsbliss, :sms_adapter, sms_adapter)
+    Application.put_env(:ex_messenger, :sms_adapter, sms_adapter)
     context
   end
 
   defp save_restore_globals(context) do
-    globals = Application.get_all_env(:ex_smsbliss)
+    globals = Application.get_all_env(:ex_messenger)
     on_exit fn ->
       globals
       |>  Enum.each(fn {k, v} -> 
-            Application.put_env(:ex_smsbliss, k, v)
+            Application.put_env(:ex_messenger, k, v)
           end)
     end
 

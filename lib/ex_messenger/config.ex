@@ -1,9 +1,9 @@
-defmodule ExSmsBliss.Config do
+defmodule ExMessenger.Config do
   @moduledoc false
 
   @defaults %{
-        :sms_adapter => ExSmsBliss.Json,
-        ExSmsBliss.Json => [
+        :sms_adapter => ExMessenger.Json,
+        ExMessenger.Json => [
           api_base: "http://api.smsbliss.net/messages/v2/",
           request_billing_on_send: true # should it request billing details on each send message\messages?
         ],
@@ -21,7 +21,7 @@ defmodule ExSmsBliss.Config do
 
   @spec get(atom) :: term
   def get(key) when is_atom(key) do
-    get(:ex_smsbliss, key)
+    get(:ex_messenger, key)
   end
 
   @doc """
@@ -78,7 +78,7 @@ defmodule ExSmsBliss.Config do
   end
 
   def get_integer(key) do
-    get_integer(:ex_smsbliss, key)
+    get_integer(:ex_messenger, key)
   end
 
   defp get_all_env do

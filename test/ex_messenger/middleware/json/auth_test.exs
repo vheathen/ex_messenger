@@ -1,10 +1,10 @@
-defmodule ExSmsBliss.Middleware.Json.AuthTest do
+defmodule ExMessenger.Middleware.Json.AuthTest do
   use ExUnit.Case
 
   defmodule JsonAuthClient do
     use Tesla
 
-    plug ExSmsBliss.Middleware.Json.Auth
+    plug ExMessenger.Middleware.Json.Auth
     plug Tesla.Middleware.JSON
 
     adapter fn env ->
@@ -17,10 +17,10 @@ defmodule ExSmsBliss.Middleware.Json.AuthTest do
 
   end
 
-  alias ExSmsBliss.Middleware.Json.Auth
+  alias ExMessenger.Middleware.Json.Auth
 
   test "login\\pass must be set from config settings" do
-    auth = Application.get_env(:ex_smsbliss, :auth)
+    auth = Application.get_env(:ex_messenger, :auth)
     login = auth |> Keyword.get(:login)
     password = auth |> Keyword.get(:password)
     

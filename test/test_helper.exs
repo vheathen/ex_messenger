@@ -1,5 +1,5 @@
-# Application.load(:ex_smsbliss)
-# for app <- Application.spec(:ex_smsbliss, :applications) do
+# Application.load(:ex_messenger)
+# for app <- Application.spec(:ex_messenger, :applications) do
 #   Application.ensure_all_started(app)
 # end
 
